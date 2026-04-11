@@ -157,6 +157,30 @@ Các trường đề xuất:
 - `created_at`: thời gian tạo
 - `updated_at`: thời gian cập nhật
 
+### 3.8 Bảng `payments`
+
+Lưu thông tin thanh toán tổng quan của đơn hàng.
+
+- `id`: khóa chính
+- `order_id`: khóa ngoại tới `orders.id` (1 đơn hàng - 1 payment master)
+- `idempotency_key`: theo dõi ID khách hàng gửi lên để chống lặp
+- `payment_method`: phương thức (`CASH`, `E_WALLET`, `CREDIT_CARD`)
+- `status`: trạng thái (`PENDING`, `PROCESSING`, `SUCCESS`, `FAILED`)
+- `amount`: số tiền thanh toán
+- `created_at`, `updated_at`
+
+### 3.9 Bảng `payment_transactions`
+
+Lưu lại lịch sử các lần gọi Callback/Retry đối với cổng thanh toán giả lập.
+
+- `id`: khóa chính
+- `payment_id`: khóa ngoại tới `payments.id`
+- `attempt_number`: số lần thử lại (1, 2, 3...)
+- `status`: trạng thái của lượt thử hiện tại
+- `transaction_ref`: mã giao dịch từ cổng thanh toán
+- `gateway_response`: phản hồi chi tiết dạng JSON
+- `created_at`, `updated_at`
+
 ## 4. Đặc tả API
 
 Tất cả API trả về dữ liệu dạng JSON. Format response thành công chuẩn:
@@ -296,11 +320,11 @@ Các trường phổ biến của món ăn:
 
 Các endpoint đề xuất:
 
-- `GET /api/orders`: lấy danh sách đơn hàng
+- `GET /api/orders`: lấy danh sách đơn hàng (hỗ trợ Query Filters `?statusId=...&fromDate=...&toDate=...`)
 - `GET /api/orders/:id`: lấy chi tiết đơn hàng
-- `POST /api/orders`: tạo đơn hàng mới
+- `POST /api/orders`: tạo đơn hàng mới (Bắn Event Socket.IO `new_order` báo hiệu Real-time Dashboard)
 - `PUT /api/orders/:id`: cập nhật đơn hàng
-- `PUT /api/orders/:id/status`: cập nhật trạng thái đơn hàng
+- `PUT /api/orders/:id/status`: cập nhật trạng thái đơn (Có xử lý Concurrency Control, yêu cầu gửi kèm `expectedVersion`)
 - `DELETE /api/orders/:id`: xóa đơn hàng
 
 Request body điển hình:
@@ -326,21 +350,20 @@ Ví dụ đối tượng đơn hàng trả về:
 
 ### 4.5 API thanh toán (giả lập)
 
-Module thanh toán hiện chỉ là stub để phục vụ demo. Hệ thống chưa kết nối cổng thanh toán thật.
+Module thanh toán hiện là stub phục vụ demo có tính tích hợp cao. Mặc dù chưa kết nối cổng thanh toán thực, nhưng hệ thống mô phỏng đầy đủ độ trễ của gateway và tỷ lệ xử lý lỗi giao dịch.
 
-Các endpoint đề xuất:
+Các endpoint khả dụng:
 
-- `POST /api/payments/create`
-- `POST /api/payments/callback`
-- `GET /api/payments/:orderId`
+- `POST /api/payments/create`: Khởi tạo thanh toán master
+- `POST /api/payments/callback`: Xử lý Callback/Webhook phản hồi. (Giả lập cấu hình 5% giao dịch thất bại trả về `FAILED` hoặc `TIMEOUT`).
+- `GET /api/payments/:orderId`: Nhận trạng thái thanh toán hiện tại kèm mảng Transaction Logs.
 
-Các trường chính:
+Các trường chính trong Payload:
 
-- `order_id`
-- `payment_method`
+- `orderId`
+- `paymentMethod`
+- `gatewayRef`
 - `amount`
-- `payment_status`
-- `transaction_code`
 
 Các phương thức demo:
 
@@ -385,9 +408,9 @@ Quy tắc:
 
 ### 5.4 Quy tắc thanh toán
 
-- Thanh toán hiện chỉ là mô phỏng.
-- `CASH` có thể được giữ ở trạng thái chờ đến khi giao hàng xong.
-- `E_WALLET` có thể được cập nhật là thanh toán thành công hoặc thất bại dựa trên kết quả giả lập.
+- Cấu trúc thanh toán tuân thủ Master-Detail (`payments` và `payment_transactions`). Cho phép lưu lại dấu vết (audit trail) mỗi khi ví điện tử nháy Webhook qua Server.
+- Quá trình Mock (Giả lập) sẽ tự chủ động Sleep Delay 1-2 giây cho hệ thống có thời gian đợi Web Admin test Loader UI. 
+- Xác suất 5% giả lập rủi ro lỗi Cổng (`FAILED`/`TIMEOUT`) hỗ trợ Tester kiểm tra tính bền bỉ của việc Handle Exception bên FE.
 
 ## 6. Xử lý lỗi
 
@@ -397,7 +420,7 @@ Quy tắc:
 - `201 Created`: tạo mới thành công
 - `400 Bad Request`: dữ liệu đầu vào sai hoặc thiếu
 - `404 Not Found`: không tìm thấy tài nguyên
-- `409 Conflict`: xung đột dữ liệu hoặc xung đột version
+- `409 Conflict`: Xung đột bộ máy cơ sở dữ liệu (Optimistic Locking Version), báo hiệu trường hợp Đơn hàng đã được quản trị viên khác vừa thao tác. Phải từ chối cập nhật!
 - `500 Internal Server Error`: lỗi hệ thống
 
 ### 6.2 Format phản hồi

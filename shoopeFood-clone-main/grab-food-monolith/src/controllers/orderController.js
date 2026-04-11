@@ -2,6 +2,7 @@ const shippingService = require("../services/shippingService");
 const { User, Restaurant, OrderStatus } = require("../models");
 const orderRepository = require("../repositories/orderRepository");
 const orderFactory = require("../factories/orderFactory");
+const socketManager = require("../sockets");
 
 const DEFAULT_SHIPPING_BASE_FEE = 20000;
 const DEFAULT_ORDER_STATUS_CODE = orderFactory.DEFAULT_ORDER_STATUS_CODE;
@@ -36,6 +37,8 @@ const normalizeOrder = (item) => ({
   statusCode: item.statusInfo ? item.statusInfo.code : null,
   status: item.statusInfo ? item.statusInfo.code : null,
   statusLabel: item.statusInfo ? item.statusInfo.label : null,
+  paymentMethod: item.payment ? item.payment.paymentMethod : null,
+  paymentStatus: item.payment ? item.payment.status : null,
   version: item.version,
   createdAt: item.createdAt,
 });
@@ -145,21 +148,41 @@ exports.createOrder = async (req, res) => {
 
     const newOrder = await orderRepository.create(orderPayload);
     const created = await orderRepository.findById(newOrder.id);
+    const orderData = normalizeOrder(created || newOrder);
+
+    // Emit event realtime
+    try {
+      socketManager.getIO().emit("new_order", orderData);
+    } catch(e) {
+      console.log("Socket not ready or err", e.message);
+    }
 
     return res.status(201).json({
       message: "Created",
-      data: normalizeOrder(created || newOrder),
+      data: orderData,
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
-exports.getOrders = (req, res) => {
-  return orderRepository
-    .findAll()
-    .then((items) => res.json({ data: items.map(normalizeOrder) }))
-    .catch((error) => res.status(500).json({ message: error.message }));
+exports.getOrders = async (req, res) => {
+  try {
+    const filters = {};
+    if (req.query.statusId) filters.statusId = Number(req.query.statusId);
+    else if (req.query.statusCode) {
+      const resolvedStatus = await resolveStatusByCode(req.query.statusCode);
+      if (resolvedStatus) filters.statusId = resolvedStatus.id;
+    }
+    if (req.query.restaurantId) filters.restaurantId = Number(req.query.restaurantId);
+    if (req.query.fromDate) filters.fromDate = new Date(req.query.fromDate);
+    if (req.query.toDate) filters.toDate = new Date(req.query.toDate);
+
+    const items = await orderRepository.findAll(filters);
+    return res.json({ data: items.map(normalizeOrder) });
+  } catch (error) {
+    return res.status(500).json({ message: error.message });
+  }
 };
 
 exports.getOrderById = async (req, res) => {

@@ -1,13 +1,13 @@
 require("dotenv").config();
 const http = require("http");
 const app = require("./src/app");
-const initSockets = require("./src/sockets");
+const socketManager = require("./src/sockets");
 const { sequelize } = require("./src/models");
 
 const PORT = process.env.PORT || 3000;
 const server = http.createServer(app);
 
-initSockets(server);
+socketManager.init(server);
 
 const bootstrap = async () => {
   try {

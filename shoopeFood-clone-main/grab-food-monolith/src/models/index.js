@@ -6,6 +6,8 @@ const Order = require("./Order");
 const OrderStatus = require("./OrderStatus");
 const Food = require("./Food");
 const Category = require("./Category");
+const Payment = require("./Payment");
+const PaymentTransaction = require("./PaymentTransaction");
 
 User.hasOne(DriverDetail, { foreignKey: "userId", sourceKey: "id", as: "driverDetail" });
 DriverDetail.belongsTo(User, { foreignKey: "userId", targetKey: "id", as: "driverUser" });
@@ -25,6 +27,12 @@ Category.belongsTo(Restaurant, { foreignKey: "restaurantId", targetKey: "id", as
 Category.hasMany(Food, { foreignKey: "categoryId", sourceKey: "id", as: "foods" });
 Food.belongsTo(Category, { foreignKey: "categoryId", targetKey: "id", as: "category" });
 
+Order.hasOne(Payment, { foreignKey: "orderId", sourceKey: "id", as: "payment" });
+Payment.belongsTo(Order, { foreignKey: "orderId", targetKey: "id" });
+
+Payment.hasMany(PaymentTransaction, { foreignKey: "paymentId", sourceKey: "id", as: "transactions" });
+PaymentTransaction.belongsTo(Payment, { foreignKey: "paymentId", targetKey: "id" });
+
 module.exports = {
   sequelize,
   User,
@@ -34,4 +42,6 @@ module.exports = {
   OrderStatus,
   Category,
   Food,
+  Payment,
+  PaymentTransaction,
 };

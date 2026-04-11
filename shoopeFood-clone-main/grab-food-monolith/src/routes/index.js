@@ -5,6 +5,7 @@ const orderRoutes = require("./orderRoutes");
 const restaurantRoutes = require("./restaurantRoutes");
 const categoryRoutes = require("./categoryRoutes");
 const foodRoutes = require("./foodRoutes");
+const paymentRoutes = require("./paymentRoutes");
 
 const router = express.Router();
 
@@ -24,11 +25,16 @@ router.get("/categories-crud", (req, res) => {
   res.render("categories-crud");
 });
 
+router.get("/orders-dashboard", (req, res) => {
+  res.render("orders-dashboard", { title: "Orders Dashboard" });
+});
+
 router.use("/api/users", userRoutes);
 router.use("/api/drivers", driverRoutes);
 router.use("/api/orders", orderRoutes);
 router.use("/api/restaurants", restaurantRoutes);
 router.use("/api/categories", categoryRoutes);
 router.use("/api/foods", foodRoutes);
+router.use("/api/payments", paymentRoutes);
 
 module.exports = router;

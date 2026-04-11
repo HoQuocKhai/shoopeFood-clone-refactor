@@ -1,8 +1,9 @@
-const { Order, User, OrderStatus } = require("../models");
+const { Order, User, OrderStatus, Payment } = require("../models");
 
 const orderIncludes = [
   { model: User, as: "customerUser", attributes: ["id", "fullName"] },
   { model: OrderStatus, as: "statusInfo", attributes: ["id", "code", "label"] },
+  { model: Payment, as: "payment", attributes: ["id", "paymentMethod", "status", "amount"] },
 ];
 
 class OrderRepository {
@@ -31,8 +32,31 @@ class OrderRepository {
     });
   }
 
-  findAll() {
+  findAll(filters = {}) {
+    const { Op } = require("sequelize");
+    const where = {};
+    if (filters.statusId) {
+      where.statusId = filters.statusId;
+    }
+    if (filters.restaurantId) {
+      where.restaurantId = filters.restaurantId;
+    }
+    if (filters.fromDate && filters.toDate) {
+      where.createdAt = {
+        [Op.between]: [filters.fromDate, filters.toDate]
+      };
+    } else if (filters.fromDate) {
+      where.createdAt = {
+        [Op.gte]: filters.fromDate
+      };
+    } else if (filters.toDate) {
+      where.createdAt = {
+        [Op.lte]: filters.toDate
+      };
+    }
+
     return Order.findAll({
+      where,
       include: orderIncludes,
       order: [["created_at", "DESC"]],
     });
