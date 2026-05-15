@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { APP_NAME } from '../constants/app'
+import { useAuth } from '../contexts/AuthContext'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { createRestaurant, getRestaurantById, updateRestaurant } from '../services/api/restaurants'
-import type { RestaurantPayload } from '../types'
+import type { RestaurantCreateInput } from '../types'
 
 type RestaurantFormState = {
   ownerId: string
@@ -11,6 +12,8 @@ type RestaurantFormState = {
   address: string
   latitude: string
   longitude: string
+  openingTime: string
+  closingTime: string
   isOpen: boolean
   imageUrl: string
   ratingAvg: string
@@ -18,12 +21,19 @@ type RestaurantFormState = {
 
 type FormErrors = Partial<Record<keyof RestaurantFormState, string>>
 
+const VIETNAM_CENTER_LAT = '10.7769'
+const VIETNAM_CENTER_LNG = '106.7009'
+const DEFAULT_OPENING_TIME = '07:00'
+const DEFAULT_CLOSING_TIME = '22:00'
+
 const initialFormState: RestaurantFormState = {
-  ownerId: '1',
+  ownerId: '',
   name: '',
   address: '',
-  latitude: '0',
-  longitude: '0',
+  latitude: VIETNAM_CENTER_LAT,
+  longitude: VIETNAM_CENTER_LNG,
+  openingTime: DEFAULT_OPENING_TIME,
+  closingTime: DEFAULT_CLOSING_TIME,
   isOpen: true,
   imageUrl: '',
   ratingAvg: '5',
@@ -31,21 +41,29 @@ const initialFormState: RestaurantFormState = {
 
 export default function RestaurantFormPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { id } = useParams<{ id: string }>()
   const restaurantId = id ? Number(id) : null
   const isEditMode = restaurantId !== null && Number.isFinite(restaurantId)
 
-  useDocumentTitle(`${APP_NAME} | ${isEditMode ? 'Edit restaurant' : 'Create restaurant'}`)
+  useDocumentTitle(`${APP_NAME} | ${isEditMode ? 'Sửa nhà hàng' : 'Tạo nhà hàng'}`)
 
-  const [formData, setFormData] = useState<RestaurantFormState>(initialFormState)
+  const [formData, setFormData] = useState<RestaurantFormState>(() => ({
+    ...initialFormState,
+    ownerId: String(user?.id || ''),
+  }))
   const [errors, setErrors] = useState<FormErrors>({})
   const [isLoading, setIsLoading] = useState(isEditMode)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isEditMode || restaurantId === null) {
-      setFormData(initialFormState)
+      setFormData((current) => ({
+        ...current,
+        ownerId: String(user?.id || current.ownerId),
+      }))
       return
     }
 
@@ -65,6 +83,8 @@ export default function RestaurantFormPage() {
             address: restaurant.address,
             latitude: String(restaurant.latitude),
             longitude: String(restaurant.longitude),
+            openingTime: restaurant.openingTime.slice(0, 5),
+            closingTime: restaurant.closingTime.slice(0, 5),
             isOpen: restaurant.isOpen,
             imageUrl: restaurant.imageUrl ?? '',
             ratingAvg: String(restaurant.ratingAvg),
@@ -72,7 +92,7 @@ export default function RestaurantFormPage() {
         }
       } catch (error) {
         if (!ignore) {
-          setErrorMessage(error instanceof Error ? error.message : 'Khong the tai chi tiet restaurant')
+          setErrorMessage(error instanceof Error ? error.message : 'Không thể tải thông tin nhà hàng')
         }
       } finally {
         if (!ignore) {
@@ -86,7 +106,7 @@ export default function RestaurantFormPage() {
     return () => {
       ignore = true
     }
-  }, [isEditMode, restaurantId])
+  }, [isEditMode, restaurantId, user?.id])
 
   function handleFieldChange<K extends keyof RestaurantFormState>(field: K, value: RestaurantFormState[K]) {
     setFormData((current) => ({
@@ -99,7 +119,7 @@ export default function RestaurantFormPage() {
     }))
   }
 
-  function validateForm(): RestaurantPayload | null {
+  function validateForm(): RestaurantCreateInput | null {
     const nextErrors: FormErrors = {}
     const trimmedName = formData.name.trim()
     const trimmedAddress = formData.address.trim()
@@ -108,28 +128,54 @@ export default function RestaurantFormPage() {
     const longitude = Number(formData.longitude)
     const ratingAvg = Number(formData.ratingAvg)
 
+    // Validate name
     if (!trimmedName) {
-      nextErrors.name = 'Name la bat buoc'
+      nextErrors.name = 'Tên nhà hàng là bắt buộc'
     }
 
+    // Validate address
     if (!trimmedAddress) {
-      nextErrors.address = 'Address la bat buoc'
+      nextErrors.address = 'Địa chỉ là bắt buộc'
     }
 
-    if (!Number.isFinite(ownerId)) {
-      nextErrors.ownerId = 'OwnerId phai la so'
+    // Validate ownerId
+    if (!Number.isFinite(ownerId) || ownerId <= 0) {
+      nextErrors.ownerId = 'ID chủ nhân phải là số dương'
     }
 
+    // Validate coordinates
     if (!Number.isFinite(latitude)) {
-      nextErrors.latitude = 'Latitude phai parse duoc sang number'
+      nextErrors.latitude = 'Vĩ độ phải là số'
+    } else if (latitude < -90 || latitude > 90) {
+      nextErrors.latitude = 'Vĩ độ phải từ -90 đến 90'
     }
 
     if (!Number.isFinite(longitude)) {
-      nextErrors.longitude = 'Longitude phai parse duoc sang number'
+      nextErrors.longitude = 'Kinh độ phải là số'
+    } else if (longitude < -180 || longitude > 180) {
+      nextErrors.longitude = 'Kinh độ phải từ -180 đến 180'
     }
 
+    // Validate times
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
+    if (!timeRegex.test(formData.openingTime)) {
+      nextErrors.openingTime = 'Định dạng giờ mở: HH:mm'
+    }
+    if (!timeRegex.test(formData.closingTime)) {
+      nextErrors.closingTime = 'Định dạng giờ đóng: HH:mm'
+    }
+
+    if (timeRegex.test(formData.openingTime) && timeRegex.test(formData.closingTime)) {
+      if (formData.openingTime >= formData.closingTime) {
+        nextErrors.closingTime = 'Giờ đóng phải sau giờ mở'
+      }
+    }
+
+    // Validate ratingAvg
     if (!Number.isFinite(ratingAvg)) {
-      nextErrors.ratingAvg = 'RatingAvg phai parse duoc sang number'
+      nextErrors.ratingAvg = 'Đánh giá phải là số'
+    } else if (ratingAvg < 0 || ratingAvg > 5) {
+      nextErrors.ratingAvg = 'Đánh giá phải từ 0 đến 5'
     }
 
     setErrors(nextErrors)
@@ -144,6 +190,8 @@ export default function RestaurantFormPage() {
       address: trimmedAddress,
       latitude,
       longitude,
+      openingTime: formData.openingTime + ':00',
+      closingTime: formData.closingTime + ':00',
       isOpen: formData.isOpen,
       imageUrl: formData.imageUrl.trim() || null,
       ratingAvg,
@@ -160,16 +208,21 @@ export default function RestaurantFormPage() {
     try {
       setIsSubmitting(true)
       setErrorMessage(null)
+      setSuccessMessage(null)
 
       if (isEditMode && restaurantId !== null) {
         await updateRestaurant(restaurantId, payload)
+        setSuccessMessage('Đã cập nhật nhà hàng')
       } else {
         await createRestaurant(payload)
+        setSuccessMessage('Đã tạo nhà hàng mới')
       }
 
-      navigate('/restaurants')
+      setTimeout(() => {
+        navigate('/restaurants')
+      }, 1000)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Khong the luu restaurant')
+      setErrorMessage(error instanceof Error ? error.message : 'Không thể lưu nhà hàng')
     } finally {
       setIsSubmitting(false)
     }
@@ -178,115 +231,181 @@ export default function RestaurantFormPage() {
   return (
     <section className="restaurant-page">
       <div className="restaurant-form-card">
-        <h1>{isEditMode ? 'Edit restaurant' : 'Create restaurant'}</h1>
-        <p>Nhap day du thong tin restaurant va submit truc tiep len backend.</p>
+        <h1>{isEditMode ? 'Sửa nhà hàng' : 'Tạo nhà hàng mới'}</h1>
+        <p>Nhập đầy đủ thông tin nhà hàng và gửi lên backend.</p>
       </div>
 
       <div className="restaurant-form-card">
-        {isLoading ? <p className="restaurant-status-text">Dang tai du lieu restaurant...</p> : null}
+        {isLoading ? <p className="restaurant-status-text">Đang tải dữ liệu nhà hàng...</p> : null}
         {errorMessage ? <p className="restaurant-feedback error">{errorMessage}</p> : null}
+        {successMessage ? <p className="restaurant-feedback success">{successMessage}</p> : null}
 
         {!isLoading ? (
           <form className="restaurant-form" onSubmit={handleSubmit}>
             <div className="restaurant-form-grid">
+              {/* Owner ID */}
               <div className="restaurant-field">
-                <label htmlFor="ownerId">Owner ID</label>
+                <label htmlFor="ownerId">ID Chủ nhân</label>
                 <input
                   id="ownerId"
                   name="ownerId"
+                  type="number"
                   value={formData.ownerId}
                   onChange={(event) => handleFieldChange('ownerId', event.target.value)}
+                  disabled={isEditMode}
+                  min="1"
                 />
                 {errors.ownerId ? <p className="field-error">{errors.ownerId}</p> : null}
               </div>
 
+              {/* Rating */}
               <div className="restaurant-field">
-                <label htmlFor="ratingAvg">Rating Avg</label>
+                <label htmlFor="ratingAvg">Đánh giá (0-5)</label>
                 <input
                   id="ratingAvg"
                   name="ratingAvg"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="5"
                   value={formData.ratingAvg}
                   onChange={(event) => handleFieldChange('ratingAvg', event.target.value)}
                 />
                 {errors.ratingAvg ? <p className="field-error">{errors.ratingAvg}</p> : null}
               </div>
 
+              {/* Name */}
               <div className="restaurant-field full">
-                <label htmlFor="name">Name</label>
+                <label htmlFor="name">Tên nhà hàng</label>
                 <input
                   id="name"
                   name="name"
                   value={formData.name}
                   onChange={(event) => handleFieldChange('name', event.target.value)}
+                  placeholder="vd: Cơm Tấm Hàng Mười"
                 />
                 {errors.name ? <p className="field-error">{errors.name}</p> : null}
               </div>
 
+              {/* Address */}
               <div className="restaurant-field full">
-                <label htmlFor="address">Address</label>
+                <label htmlFor="address">Địa chỉ</label>
                 <input
                   id="address"
                   name="address"
                   value={formData.address}
                   onChange={(event) => handleFieldChange('address', event.target.value)}
+                  placeholder="vd: 123 Đường Nguyễn Huệ, TP HCM"
                 />
                 {errors.address ? <p className="field-error">{errors.address}</p> : null}
               </div>
 
+              {/* Latitude */}
               <div className="restaurant-field">
-                <label htmlFor="latitude">Latitude</label>
+                <label htmlFor="latitude">Vĩ độ (Latitude)</label>
                 <input
                   id="latitude"
                   name="latitude"
+                  type="number"
+                  step="0.000001"
+                  min="-90"
+                  max="90"
                   value={formData.latitude}
                   onChange={(event) => handleFieldChange('latitude', event.target.value)}
                 />
                 {errors.latitude ? <p className="field-error">{errors.latitude}</p> : null}
               </div>
 
+              {/* Longitude */}
               <div className="restaurant-field">
-                <label htmlFor="longitude">Longitude</label>
+                <label htmlFor="longitude">Kinh độ (Longitude)</label>
                 <input
                   id="longitude"
                   name="longitude"
+                  type="number"
+                  step="0.000001"
+                  min="-180"
+                  max="180"
                   value={formData.longitude}
                   onChange={(event) => handleFieldChange('longitude', event.target.value)}
                 />
                 {errors.longitude ? <p className="field-error">{errors.longitude}</p> : null}
               </div>
 
+              {/* Opening Time */}
+              <div className="restaurant-field">
+                <label htmlFor="openingTime">Giờ mở cửa</label>
+                <input
+                  id="openingTime"
+                  name="openingTime"
+                  type="time"
+                  value={formData.openingTime}
+                  onChange={(event) => handleFieldChange('openingTime', event.target.value)}
+                />
+                {errors.openingTime ? <p className="field-error">{errors.openingTime}</p> : null}
+              </div>
+
+              {/* Closing Time */}
+              <div className="restaurant-field">
+                <label htmlFor="closingTime">Giờ đóng cửa</label>
+                <input
+                  id="closingTime"
+                  name="closingTime"
+                  type="time"
+                  value={formData.closingTime}
+                  onChange={(event) => handleFieldChange('closingTime', event.target.value)}
+                />
+                {errors.closingTime ? <p className="field-error">{errors.closingTime}</p> : null}
+              </div>
+
+              {/* Image URL */}
               <div className="restaurant-field full">
-                <label htmlFor="imageUrl">Image URL</label>
+                <label htmlFor="imageUrl">URL ảnh</label>
                 <input
                   id="imageUrl"
                   name="imageUrl"
+                  type="url"
                   value={formData.imageUrl}
                   onChange={(event) => handleFieldChange('imageUrl', event.target.value)}
+                  placeholder="https://example.com/image.jpg"
                 />
+                {formData.imageUrl && (
+                  <img
+                    src={formData.imageUrl}
+                    alt="preview"
+                    style={{ marginTop: '0.5rem', maxWidth: '200px', maxHeight: '200px' }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none'
+                    }}
+                  />
+                )}
               </div>
 
+              {/* Status */}
               <div className="restaurant-field full">
-                <label htmlFor="isOpen">Trang thai mo cua</label>
-                <label className="restaurant-checkbox" htmlFor="isOpen">
+                <label className="restaurant-checkbox">
                   <input
-                    id="isOpen"
                     name="isOpen"
                     type="checkbox"
                     checked={formData.isOpen}
                     onChange={(event) => handleFieldChange('isOpen', event.target.checked)}
                   />
-                  <span>{formData.isOpen ? 'Dang mo cua' : 'Tam dong cua'}</span>
+                  <span>{formData.isOpen ? '✓ Đang mở cửa' : '✗ Tạm đóng cửa'}</span>
                 </label>
               </div>
             </div>
 
             <div className="restaurant-form-actions">
               <Link to="/restaurants" className="button-secondary">
-                Back to list
+                ← Quay lại danh sách
               </Link>
 
               <button type="submit" className="button-primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : isEditMode ? 'Update restaurant' : 'Create restaurant'}
+                {isSubmitting
+                  ? 'Đang lưu...'
+                  : isEditMode
+                    ? 'Cập nhật nhà hàng'
+                    : 'Tạo nhà hàng'}
               </button>
             </div>
           </form>

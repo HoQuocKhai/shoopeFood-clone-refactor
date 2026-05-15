@@ -5,6 +5,7 @@ const UserRole = require("./UserRole");
 const DriverDetail = require("./DriverDetail");
 const DriverLocation = require("./DriverLocation");
 const Restaurant = require("./Restaurant");
+const RestaurantChangeRequest = require("./RestaurantChangeRequest");
 const Order = require("./Order");
 const OrderItem = require("./OrderItem");
 const OrderStatus = require("./OrderStatus");
@@ -37,6 +38,15 @@ Order.belongsTo(OrderStatus, { foreignKey: "statusId", targetKey: "id", as: "sta
 Restaurant.hasMany(Category, { foreignKey: "restaurantId", sourceKey: "id", as: "categories" });
 Category.belongsTo(Restaurant, { foreignKey: "restaurantId", targetKey: "id", as: "restaurant" });
 
+User.hasMany(Restaurant, { foreignKey: "ownerId", sourceKey: "id", as: "restaurants" });
+Restaurant.belongsTo(User, { foreignKey: "ownerId", targetKey: "id", as: "owner" });
+
+User.hasMany(RestaurantChangeRequest, { foreignKey: "approvedBy", sourceKey: "id" });
+RestaurantChangeRequest.belongsTo(User, { foreignKey: "approvedBy", targetKey: "id", as: "reviewerUser" });
+
+Restaurant.hasMany(RestaurantChangeRequest, { foreignKey: "restaurantId", sourceKey: "id", as: "changeRequests" });
+RestaurantChangeRequest.belongsTo(Restaurant, { foreignKey: "restaurantId", targetKey: "id", as: "restaurant" });
+
 Category.hasMany(Food, { foreignKey: "categoryId", sourceKey: "id", as: "foods" });
 Food.belongsTo(Category, { foreignKey: "categoryId", targetKey: "id", as: "category" });
 
@@ -60,6 +70,7 @@ module.exports = {
   DriverDetail,
   DriverLocation,
   Restaurant,
+  RestaurantChangeRequest,
   Order,
   OrderItem,
   OrderStatus,

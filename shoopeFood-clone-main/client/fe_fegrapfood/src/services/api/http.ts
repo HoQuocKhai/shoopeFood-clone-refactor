@@ -65,6 +65,14 @@ export async function httpPut<T>(path: string, body: unknown, options: RequestOp
   })
 }
 
+export async function httpPatch<T>(path: string, body: unknown, options: RequestOptions = {}): Promise<T> {
+  return request<T>(path, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+    ...options,
+  })
+}
+
 export async function httpDelete<T>(path: string, options: RequestOptions = {}): Promise<T> {
   return request<T>(path, {
     method: 'DELETE',

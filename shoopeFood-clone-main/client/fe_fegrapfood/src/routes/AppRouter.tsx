@@ -6,6 +6,7 @@ import HomePage from '../pages/HomePage'
 import DriverPage from '../pages/DriverPage'
 import LoginPage from '../pages/LoginPage'
 import RestaurantListPage from '../pages/RestaurantListPage'
+import RestaurantDetailPage from '../pages/RestaurantDetailPage'
 import RestaurantFormPage from '../pages/RestaurantFormPage'
 import TrackingPage from '../pages/TrackingPage'
 
@@ -27,16 +28,24 @@ export default function AppRouter() {
         <Route
           path="/restaurants"
           element={
-            <RequireAuth allowedRoles={['MERCHANT', 'ADMIN']}>
+            <RequireAuth allowedRoles={['CUSTOMER', 'MERCHANT', 'ADMIN']}>
               <RestaurantListPage />
             </RequireAuth>
           }
         />
         <Route
-          path="/restaurants/create"
+          path="/restaurants/new"
           element={
             <RequireAuth allowedRoles={['MERCHANT', 'ADMIN']}>
               <RestaurantFormPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/restaurants/:id"
+          element={
+            <RequireAuth allowedRoles={['CUSTOMER', 'MERCHANT', 'ADMIN']}>
+              <RestaurantDetailPage />
             </RequireAuth>
           }
         />
