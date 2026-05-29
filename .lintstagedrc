@@ -1,0 +1,5 @@
+{
+  "shoopeFood-clone-main/**/*.{js,jsx,ts,tsx}": [
+    "prettier --write"
+  ]
+}

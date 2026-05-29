@@ -3,9 +3,11 @@
 ## 1. Giới thiệu
 
 ### 1.1 Mục đích
+
 Tài liệu này mô tả đặc tả yêu cầu phần mềm cho hệ thống backend của dự án GrabFood clone. Mục tiêu của backend là cung cấp API phục vụ quản lý người dùng, tài xế, nhà hàng, thực đơn, đơn hàng và mô phỏng thanh toán cho một dự án học tập full-stack.
 
 ### 1.2 Phạm vi
+
 Hệ thống hỗ trợ các chức năng chính sau:
 
 - Quản lý người dùng và tài xế
@@ -409,7 +411,7 @@ Quy tắc:
 ### 5.4 Quy tắc thanh toán
 
 - Cấu trúc thanh toán tuân thủ Master-Detail (`payments` và `payment_transactions`). Cho phép lưu lại dấu vết (audit trail) mỗi khi ví điện tử nháy Webhook qua Server.
-- Quá trình Mock (Giả lập) sẽ tự chủ động Sleep Delay 1-2 giây cho hệ thống có thời gian đợi Web Admin test Loader UI. 
+- Quá trình Mock (Giả lập) sẽ tự chủ động Sleep Delay 1-2 giây cho hệ thống có thời gian đợi Web Admin test Loader UI.
 - Xác suất 5% giả lập rủi ro lỗi Cổng (`FAILED`/`TIMEOUT`) hỗ trợ Tester kiểm tra tính bền bỉ của việc Handle Exception bên FE.
 
 ## 6. Xử lý lỗi

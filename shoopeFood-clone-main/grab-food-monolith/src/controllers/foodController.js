@@ -1,5 +1,5 @@
-const { Op } = require("sequelize");
-const { Food, Category } = require("../models");
+const { Op } = require('sequelize');
+const { Food, Category } = require('../models');
 
 const normalizeFood = (item) => ({
   id: item.id,
@@ -30,12 +30,12 @@ exports.getAllFoods = async (req, res) => {
     await Food.resetExpiredDailyQuantities();
 
     const { restaurantId, categoryId, name, isAvailable } = req.query;
-    
+
     const whereClause = {};
     if (categoryId !== undefined) {
       const parsedCategoryId = Number(categoryId);
       if (!Number.isFinite(parsedCategoryId)) {
-        return res.status(400).json({ message: "Invalid categoryId" });
+        return res.status(400).json({ message: 'Invalid categoryId' });
       }
       whereClause.categoryId = parsedCategoryId;
     }
@@ -53,22 +53,22 @@ exports.getAllFoods = async (req, res) => {
     if (restaurantId !== undefined) {
       const parsedRestaurantId = Number(restaurantId);
       if (!Number.isFinite(parsedRestaurantId)) {
-        return res.status(400).json({ message: "Invalid restaurantId" });
+        return res.status(400).json({ message: 'Invalid restaurantId' });
       }
       includeOptions.push({
         model: Category,
         as: 'category',
         where: { restaurantId: parsedRestaurantId },
-        attributes: []
+        attributes: [],
       });
     }
 
-    const items = await Food.findAll({ 
+    const items = await Food.findAll({
       where: whereClause,
       include: includeOptions,
-      order: [["id", "ASC"]] 
+      order: [['id', 'ASC']],
     });
-    
+
     res.json({ data: items.map(normalizeFood) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -83,7 +83,7 @@ exports.getFoodById = async (req, res) => {
     const item = await Food.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Food not found" });
+      return res.status(404).json({ message: 'Food not found' });
     }
 
     return res.json({ data: normalizeFood(item) });
@@ -94,15 +94,28 @@ exports.getFoodById = async (req, res) => {
 
 exports.createFood = async (req, res) => {
   try {
-    const { name, price, categoryId, isAvailable = true, defaultQuantity = 0, currentQuantity } = req.body;
+    const {
+      name,
+      price,
+      categoryId,
+      isAvailable = true,
+      defaultQuantity = 0,
+      currentQuantity,
+    } = req.body;
 
-    const trimmedName = typeof name === "string" ? name.trim() : "";
+    const trimmedName = typeof name === 'string' ? name.trim() : '';
     const parsedPrice = Number(price);
-    const parsedDefaultQuantity = parseOptionalNonNegativeInteger(defaultQuantity, "defaultQuantity");
-    const parsedCurrentQuantity = parseOptionalNonNegativeInteger(currentQuantity, "currentQuantity");
+    const parsedDefaultQuantity = parseOptionalNonNegativeInteger(
+      defaultQuantity,
+      'defaultQuantity'
+    );
+    const parsedCurrentQuantity = parseOptionalNonNegativeInteger(
+      currentQuantity,
+      'currentQuantity'
+    );
 
     if (!trimmedName || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
-      return res.status(400).json({ message: "valid name and non-negative price are required" });
+      return res.status(400).json({ message: 'valid name and non-negative price are required' });
     }
 
     if (parsedDefaultQuantity.error) {
@@ -118,7 +131,7 @@ exports.createFood = async (req, res) => {
       parsedCategoryId = Number(categoryId);
       const category = await Category.findByPk(parsedCategoryId);
       if (!category) {
-        return res.status(400).json({ message: "Category not found" });
+        return res.status(400).json({ message: 'Category not found' });
       }
     }
 
@@ -126,13 +139,13 @@ exports.createFood = async (req, res) => {
       categoryId: parsedCategoryId,
       name: trimmedName,
       price: parsedPrice,
-      isAvailable: typeof isAvailable === "boolean" ? isAvailable : true,
+      isAvailable: typeof isAvailable === 'boolean' ? isAvailable : true,
       defaultQuantity: parsedDefaultQuantity.value,
       currentQuantity: parsedCurrentQuantity.value ?? parsedDefaultQuantity.value,
       quantityResetDate: Food.getStockDate(),
     });
 
-    return res.status(201).json({ message: "Created", data: normalizeFood(newFood) });
+    return res.status(201).json({ message: 'Created', data: normalizeFood(newFood) });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -147,14 +160,14 @@ exports.updateFood = async (req, res) => {
     const item = await Food.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Food not found" });
+      return res.status(404).json({ message: 'Food not found' });
     }
 
     let trimmedName = item.name;
     if (name !== undefined) {
-      trimmedName = typeof name === "string" ? name.trim() : "";
+      trimmedName = typeof name === 'string' ? name.trim() : '';
       if (!trimmedName) {
-        return res.status(400).json({ message: "name cannot be empty" });
+        return res.status(400).json({ message: 'name cannot be empty' });
       }
     }
 
@@ -162,7 +175,7 @@ exports.updateFood = async (req, res) => {
     if (price !== undefined) {
       parsedPrice = Number(price);
       if (!Number.isFinite(parsedPrice) || parsedPrice < 0) {
-        return res.status(400).json({ message: "price must be non-negative" });
+        return res.status(400).json({ message: 'price must be non-negative' });
       }
     }
 
@@ -173,13 +186,13 @@ exports.updateFood = async (req, res) => {
       } else {
         const parsedCategoryId = Number(categoryId);
         if (!Number.isFinite(parsedCategoryId)) {
-          return res.status(400).json({ message: "Invalid categoryId" });
+          return res.status(400).json({ message: 'Invalid categoryId' });
         }
         nextCategoryId = parsedCategoryId;
         if (nextCategoryId !== item.categoryId) {
           const category = await Category.findByPk(nextCategoryId);
           if (!category) {
-            return res.status(400).json({ message: "Category not found" });
+            return res.status(400).json({ message: 'Category not found' });
           }
         }
       }
@@ -187,7 +200,10 @@ exports.updateFood = async (req, res) => {
 
     let nextDefaultQuantity = Number(item.defaultQuantity || 0);
     if (defaultQuantity !== undefined) {
-      const parsedDefaultQuantity = parseOptionalNonNegativeInteger(defaultQuantity, "defaultQuantity");
+      const parsedDefaultQuantity = parseOptionalNonNegativeInteger(
+        defaultQuantity,
+        'defaultQuantity'
+      );
       if (parsedDefaultQuantity.error) {
         return res.status(400).json({ message: parsedDefaultQuantity.error });
       }
@@ -196,7 +212,10 @@ exports.updateFood = async (req, res) => {
 
     let nextCurrentQuantity = Number(item.currentQuantity || 0);
     if (currentQuantity !== undefined) {
-      const parsedCurrentQuantity = parseOptionalNonNegativeInteger(currentQuantity, "currentQuantity");
+      const parsedCurrentQuantity = parseOptionalNonNegativeInteger(
+        currentQuantity,
+        'currentQuantity'
+      );
       if (parsedCurrentQuantity.error) {
         return res.status(400).json({ message: parsedCurrentQuantity.error });
       }
@@ -209,13 +228,13 @@ exports.updateFood = async (req, res) => {
       name: trimmedName,
       price: parsedPrice,
       categoryId: nextCategoryId,
-      isAvailable: typeof isAvailable === "boolean" ? isAvailable : item.isAvailable,
+      isAvailable: typeof isAvailable === 'boolean' ? isAvailable : item.isAvailable,
       defaultQuantity: nextDefaultQuantity,
       currentQuantity: nextCurrentQuantity,
       quantityResetDate: item.quantityResetDate || Food.getStockDate(),
     });
 
-    return res.json({ message: "Updated", data: normalizeFood(item) });
+    return res.json({ message: 'Updated', data: normalizeFood(item) });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -227,11 +246,11 @@ exports.deleteFood = async (req, res) => {
     const item = await Food.findByPk(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Food not found" });
+      return res.status(404).json({ message: 'Food not found' });
     }
 
     await item.destroy();
-    return res.json({ message: "Deleted", data: normalizeFood(item) });
+    return res.json({ message: 'Deleted', data: normalizeFood(item) });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }

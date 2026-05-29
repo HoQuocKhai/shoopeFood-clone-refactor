@@ -1,22 +1,28 @@
-const { DriverDetail, DriverLocation, Order, User, sequelize } = require("../models");
-const socketManager = require("../sockets");
+const { DriverDetail, DriverLocation, Order, User, sequelize } = require('../models');
+const socketManager = require('../sockets');
 
 const normalizeDriver = (item) => {
   const user = item.driverUser || item.User || null;
 
   return {
     id: item.userId,
-    fullName: user ? user.fullName || "" : "",
-    phone: user ? user.phone || "" : "",
+    fullName: user ? user.fullName || '' : '',
+    phone: user ? user.phone || '' : '',
     ratingAvg: Number(user ? user.ratingAvg || 0 : 0),
-    vehicleType: item.vehicleType || "",
-    licensePlate: item.licensePlate || "",
+    vehicleType: item.vehicleType || '',
+    licensePlate: item.licensePlate || '',
     isOnline: Boolean(item.isOnline),
     createdAt: user ? user.createdAt : null,
   };
 };
 
-const driverInclude = [{ model: User, as: "driverUser", attributes: ["id", "fullName", "phone", "ratingAvg", "createdAt"] }];
+const driverInclude = [
+  {
+    model: User,
+    as: 'driverUser',
+    attributes: ['id', 'fullName', 'phone', 'ratingAvg', 'createdAt'],
+  },
+];
 
 const normalizeDriverLocation = (item) => ({
   id: item.id,
@@ -31,7 +37,10 @@ const normalizeDriverLocation = (item) => ({
 
 exports.getDrivers = async (req, res) => {
   try {
-    const items = await DriverDetail.findAll({ include: driverInclude, order: [["userId", "ASC"]] });
+    const items = await DriverDetail.findAll({
+      include: driverInclude,
+      order: [['userId', 'ASC']],
+    });
     return res.json({ data: items.map(normalizeDriver) });
   } catch (error) {
     return res.status(500).json({ message: error.message });
@@ -44,7 +53,7 @@ exports.getDriverById = async (req, res) => {
     const item = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude });
 
     if (!item) {
-      return res.status(404).json({ message: "Driver not found" });
+      return res.status(404).json({ message: 'Driver not found' });
     }
 
     return res.json({ data: normalizeDriver(item) });
@@ -59,7 +68,7 @@ exports.getDriverInfo = async (req, res) => {
     const item = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude });
 
     if (!item) {
-      return res.status(404).json({ message: "Driver not found" });
+      return res.status(404).json({ message: 'Driver not found' });
     }
 
     const normalized = normalizeDriver(item);
@@ -86,30 +95,30 @@ exports.createDriver = async (req, res) => {
     const {
       fullName,
       phone,
-      password = "123456",
+      password = '123456',
       ratingAvg = 5.0,
-      vehicleType = "",
-      licensePlate = "",
+      vehicleType = '',
+      licensePlate = '',
       isOnline = false,
     } = req.body;
 
     if (!fullName || !phone) {
       await transaction.rollback();
-      return res.status(400).json({ message: "fullName and phone are required" });
+      return res.status(400).json({ message: 'fullName and phone are required' });
     }
 
     const normalizedPhone = String(phone).trim();
     const existedUser = await User.findOne({ where: { phone: normalizedPhone }, transaction });
     if (existedUser) {
       await transaction.rollback();
-      return res.status(409).json({ message: "Phone already exists" });
+      return res.status(409).json({ message: 'Phone already exists' });
     }
 
     const newUser = await User.create(
       {
         fullName: String(fullName).trim(),
         phone: normalizedPhone,
-        password: String(password).trim() || "123456",
+        password: String(password).trim() || '123456',
         ratingAvg: Number.isFinite(Number(ratingAvg)) ? Number(ratingAvg) : 5.0,
       },
       { transaction }
@@ -118,8 +127,8 @@ exports.createDriver = async (req, res) => {
     const newDriver = await DriverDetail.create(
       {
         userId: newUser.id,
-        vehicleType: String(vehicleType || "").trim(),
-        licensePlate: String(licensePlate || "").trim(),
+        vehicleType: String(vehicleType || '').trim(),
+        licensePlate: String(licensePlate || '').trim(),
         isOnline: Boolean(isOnline),
       },
       { transaction }
@@ -127,8 +136,13 @@ exports.createDriver = async (req, res) => {
 
     await transaction.commit();
 
-    const created = await DriverDetail.findOne({ where: { userId: newDriver.userId }, include: driverInclude });
-    return res.status(201).json({ message: "Created", data: normalizeDriver(created || newDriver) });
+    const created = await DriverDetail.findOne({
+      where: { userId: newDriver.userId },
+      include: driverInclude,
+    });
+    return res
+      .status(201)
+      .json({ message: 'Created', data: normalizeDriver(created || newDriver) });
   } catch (error) {
     await transaction.rollback();
     return res.status(500).json({ message: error.message });
@@ -142,10 +156,15 @@ exports.updateDriver = async (req, res) => {
     const id = Number(req.params.id);
     const { fullName, phone, password, ratingAvg, vehicleType, licensePlate, isOnline } = req.body;
 
-    const item = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude, transaction, lock: true });
+    const item = await DriverDetail.findOne({
+      where: { userId: id },
+      include: driverInclude,
+      transaction,
+      lock: true,
+    });
     if (!item || !item.driverUser) {
       await transaction.rollback();
-      return res.status(404).json({ message: "Driver not found" });
+      return res.status(404).json({ message: 'Driver not found' });
     }
 
     const user = item.driverUser;
@@ -154,14 +173,14 @@ exports.updateDriver = async (req, res) => {
       const normalizedPhone = String(phone).trim();
       if (!normalizedPhone) {
         await transaction.rollback();
-        return res.status(400).json({ message: "phone cannot be empty" });
+        return res.status(400).json({ message: 'phone cannot be empty' });
       }
 
       if (normalizedPhone !== user.phone) {
         const existedPhone = await User.findOne({ where: { phone: normalizedPhone }, transaction });
         if (existedPhone) {
           await transaction.rollback();
-          return res.status(409).json({ message: "Phone already exists" });
+          return res.status(409).json({ message: 'Phone already exists' });
         }
       }
 
@@ -179,7 +198,7 @@ exports.updateDriver = async (req, res) => {
     if (ratingAvg !== undefined) {
       if (!Number.isFinite(Number(ratingAvg))) {
         await transaction.rollback();
-        return res.status(400).json({ message: "ratingAvg must be a number" });
+        return res.status(400).json({ message: 'ratingAvg must be a number' });
       }
       user.ratingAvg = Number(ratingAvg);
     }
@@ -200,7 +219,7 @@ exports.updateDriver = async (req, res) => {
     await transaction.commit();
 
     const updated = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude });
-    return res.json({ message: "Updated", data: normalizeDriver(updated || item) });
+    return res.json({ message: 'Updated', data: normalizeDriver(updated || item) });
   } catch (error) {
     await transaction.rollback();
     return res.status(500).json({ message: error.message });
@@ -212,11 +231,16 @@ exports.deleteDriver = async (req, res) => {
 
   try {
     const id = Number(req.params.id);
-    const item = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude, transaction, lock: true });
+    const item = await DriverDetail.findOne({
+      where: { userId: id },
+      include: driverInclude,
+      transaction,
+      lock: true,
+    });
 
     if (!item) {
       await transaction.rollback();
-      return res.status(404).json({ message: "Driver not found" });
+      return res.status(404).json({ message: 'Driver not found' });
     }
 
     const user = await User.findByPk(id, { transaction, lock: true });
@@ -227,7 +251,7 @@ exports.deleteDriver = async (req, res) => {
     }
 
     await transaction.commit();
-    return res.json({ message: "Deleted", data: normalizeDriver(item) });
+    return res.json({ message: 'Deleted', data: normalizeDriver(item) });
   } catch (error) {
     await transaction.rollback();
     return res.status(500).json({ message: error.message });
@@ -239,17 +263,17 @@ exports.updateDriverOnlineStatus = async (req, res) => {
     const id = Number(req.params.id);
     const { isOnline } = req.body;
 
-    if (typeof isOnline !== "boolean") {
-      return res.status(400).json({ message: "isOnline must be boolean" });
+    if (typeof isOnline !== 'boolean') {
+      return res.status(400).json({ message: 'isOnline must be boolean' });
     }
 
     const item = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude });
     if (!item) {
-      return res.status(404).json({ message: "Driver not found" });
+      return res.status(404).json({ message: 'Driver not found' });
     }
 
     await item.update({ isOnline });
-    return res.json({ message: "Updated", data: normalizeDriver(item) });
+    return res.json({ message: 'Updated', data: normalizeDriver(item) });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -271,28 +295,28 @@ exports.updateDriverLocation = async (req, res) => {
     const { orderId, latitude, longitude, heading = 0, speedKmh = 24 } = req.body;
 
     if (!Number.isFinite(id)) {
-      return res.status(400).json({ message: "Invalid driver id" });
+      return res.status(400).json({ message: 'Invalid driver id' });
     }
 
     if (!Number.isFinite(Number(latitude)) || !Number.isFinite(Number(longitude))) {
-      return res.status(400).json({ message: "latitude and longitude are required" });
+      return res.status(400).json({ message: 'latitude and longitude are required' });
     }
 
     const driver = await DriverDetail.findOne({ where: { userId: id }, include: driverInclude });
     if (!driver) {
-      return res.status(404).json({ message: "Driver not found" });
+      return res.status(404).json({ message: 'Driver not found' });
     }
 
     let normalizedOrderId = null;
-    if (orderId !== undefined && orderId !== null && orderId !== "") {
+    if (orderId !== undefined && orderId !== null && orderId !== '') {
       normalizedOrderId = Number(orderId);
       if (!Number.isFinite(normalizedOrderId)) {
-        return res.status(400).json({ message: "Invalid orderId" });
+        return res.status(400).json({ message: 'Invalid orderId' });
       }
 
       const order = await Order.findByPk(normalizedOrderId);
       if (!order) {
-        return res.status(404).json({ message: "Order not found" });
+        return res.status(404).json({ message: 'Order not found' });
       }
 
       if (order.driverId !== id) {
@@ -316,15 +340,15 @@ exports.updateDriverLocation = async (req, res) => {
     const data = normalizeDriverLocation(location);
 
     try {
-      socketManager.getIO().emit("driver:location", data);
+      socketManager.getIO().emit('driver:location', data);
       if (normalizedOrderId) {
         socketManager.getIO().emit(`order:${normalizedOrderId}:driver-location`, data);
       }
     } catch (error) {
-      console.log("Socket not ready or err", error.message);
+      console.log('Socket not ready or err', error.message);
     }
 
-    return res.status(201).json({ message: "Updated", data });
+    return res.status(201).json({ message: 'Updated', data });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -337,24 +361,24 @@ exports.getLatestDriverLocation = async (req, res) => {
     const whereClause = { driverId: id };
 
     if (!Number.isFinite(id)) {
-      return res.status(400).json({ message: "Invalid driver id" });
+      return res.status(400).json({ message: 'Invalid driver id' });
     }
 
     if (orderId !== undefined) {
       const normalizedOrderId = Number(orderId);
       if (!Number.isFinite(normalizedOrderId)) {
-        return res.status(400).json({ message: "Invalid orderId" });
+        return res.status(400).json({ message: 'Invalid orderId' });
       }
       whereClause.orderId = normalizedOrderId;
     }
 
     const item = await DriverLocation.findOne({
       where: whereClause,
-      order: [["created_at", "DESC"]],
+      order: [['created_at', 'DESC']],
     });
 
     if (!item) {
-      return res.status(404).json({ message: "Driver location not found" });
+      return res.status(404).json({ message: 'Driver location not found' });
     }
 
     return res.json({ data: normalizeDriverLocation(item) });

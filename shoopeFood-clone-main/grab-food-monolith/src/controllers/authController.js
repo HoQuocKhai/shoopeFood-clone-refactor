@@ -1,20 +1,23 @@
-const { User, Role } = require("../models");
-const { createAuthToken } = require("../utils/authToken");
+const { User, Role } = require('../models');
+const { createAuthToken } = require('../utils/authToken');
 
-const SUPPORTED_ROLES = new Set(["CUSTOMER", "DRIVER", "MERCHANT", "ADMIN"]);
+const SUPPORTED_ROLES = new Set(['CUSTOMER', 'DRIVER', 'MERCHANT', 'ADMIN']);
 
-const normalizeRole = (role) => String(role || "").trim().toUpperCase();
+const normalizeRole = (role) =>
+  String(role || '')
+    .trim()
+    .toUpperCase();
 
 const normalizeAuthUser = (user, selectedRole) => {
   const roles = (user.roles || []).map((role) => role.name);
 
   return {
     id: user.id,
-    fullName: user.fullName || "",
-    phone: user.phone || "",
+    fullName: user.fullName || '',
+    phone: user.phone || '',
     ratingAvg: Number(user.ratingAvg || 0),
     roles,
-    role: selectedRole || roles[0] || "CUSTOMER",
+    role: selectedRole || roles[0] || 'CUSTOMER',
     createdAt: user.createdAt,
   };
 };
@@ -22,22 +25,24 @@ const normalizeAuthUser = (user, selectedRole) => {
 const findUserByPhone = (phone) =>
   User.findOne({
     where: { phone },
-    include: [{ model: Role, as: "roles", attributes: ["id", "name"], through: { attributes: [] } }],
+    include: [
+      { model: Role, as: 'roles', attributes: ['id', 'name'], through: { attributes: [] } },
+    ],
   });
 
 exports.login = async (req, res) => {
   try {
-    const phone = String(req.body.phone || "").trim();
-    const password = String(req.body.password || "");
+    const phone = String(req.body.phone || '').trim();
+    const password = String(req.body.password || '');
     const requestedRole = normalizeRole(req.body.role);
 
     if (!phone || !password || !SUPPORTED_ROLES.has(requestedRole)) {
-      return res.status(400).json({ message: "phone, password and valid role are required" });
+      return res.status(400).json({ message: 'phone, password and valid role are required' });
     }
 
     const user = await findUserByPhone(phone);
     if (!user || String(user.password) !== password) {
-      return res.status(401).json({ message: "Invalid phone or password" });
+      return res.status(401).json({ message: 'Invalid phone or password' });
     }
 
     const roleNames = (user.roles || []).map((role) => role.name);
@@ -53,7 +58,7 @@ exports.login = async (req, res) => {
     });
 
     return res.json({
-      message: "Logged in",
+      message: 'Logged in',
       data: {
         token,
         user: normalizeAuthUser(user, requestedRole),
@@ -67,11 +72,13 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      include: [{ model: Role, as: "roles", attributes: ["id", "name"], through: { attributes: [] } }],
+      include: [
+        { model: Role, as: 'roles', attributes: ['id', 'name'], through: { attributes: [] } },
+      ],
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: 'User not found' });
     }
 
     return res.json({

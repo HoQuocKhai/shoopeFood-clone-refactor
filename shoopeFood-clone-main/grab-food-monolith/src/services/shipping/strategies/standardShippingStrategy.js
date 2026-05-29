@@ -2,7 +2,7 @@ const STANDARD_PER_KM_FEE = 3500;
 
 class StandardShippingStrategy {
   constructor() {
-    this.code = "STANDARD";
+    this.code = 'STANDARD';
   }
 
   calculate(distanceKm) {

@@ -1,14 +1,14 @@
-const { Order, User, OrderStatus, Payment, OrderItem, Food } = require("../models");
+const { Order, User, OrderStatus, Payment, OrderItem, Food } = require('../models');
 
 const orderIncludes = [
-  { model: User, as: "customerUser", attributes: ["id", "fullName"] },
-  { model: OrderStatus, as: "statusInfo", attributes: ["id", "code", "label"] },
-  { model: Payment, as: "payment", attributes: ["id", "paymentMethod", "status", "amount"] },
+  { model: User, as: 'customerUser', attributes: ['id', 'fullName'] },
+  { model: OrderStatus, as: 'statusInfo', attributes: ['id', 'code', 'label'] },
+  { model: Payment, as: 'payment', attributes: ['id', 'paymentMethod', 'status', 'amount'] },
   {
     model: OrderItem,
-    as: "items",
-    attributes: ["id", "orderId", "foodId", "quantity", "priceAtOrder"],
-    include: [{ model: Food, as: "food", attributes: ["id", "name", "price"] }],
+    as: 'items',
+    attributes: ['id', 'orderId', 'foodId', 'quantity', 'priceAtOrder'],
+    include: [{ model: Food, as: 'food', attributes: ['id', 'name', 'price'] }],
   },
 ];
 
@@ -33,19 +33,24 @@ class OrderRepository {
 
   findByIdempotencyKey(idempotencyKey) {
     return Order.findOne({
-      where: { idempotencyKey: String(idempotencyKey || "").trim() },
+      where: { idempotencyKey: String(idempotencyKey || '').trim() },
       include: orderIncludes,
     });
   }
 
   findAll(filters = {}) {
-    const { Op } = require("sequelize");
+    const { Op } = require('sequelize');
     const where = {};
     if (filters.statusId) {
       where.statusId = filters.statusId;
     }
+    // Single restaurantId filter
     if (filters.restaurantId) {
       where.restaurantId = filters.restaurantId;
+    }
+    // Merchant scope: list of restaurantIds (IN query)
+    if (filters.restaurantIds && filters.restaurantIds.length > 0) {
+      where.restaurantId = { [Op.in]: filters.restaurantIds };
     }
     if (filters.customerId) {
       where.customerId = filters.customerId;
@@ -55,22 +60,22 @@ class OrderRepository {
     }
     if (filters.fromDate && filters.toDate) {
       where.createdAt = {
-        [Op.between]: [filters.fromDate, filters.toDate]
+        [Op.between]: [filters.fromDate, filters.toDate],
       };
     } else if (filters.fromDate) {
       where.createdAt = {
-        [Op.gte]: filters.fromDate
+        [Op.gte]: filters.fromDate,
       };
     } else if (filters.toDate) {
       where.createdAt = {
-        [Op.lte]: filters.toDate
+        [Op.lte]: filters.toDate,
       };
     }
 
     return Order.findAll({
       where,
       include: orderIncludes,
-      order: [["created_at", "DESC"]],
+      order: [['created_at', 'DESC']],
     });
   }
 

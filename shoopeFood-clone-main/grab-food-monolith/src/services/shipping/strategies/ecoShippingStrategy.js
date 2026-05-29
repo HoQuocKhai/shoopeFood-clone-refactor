@@ -2,7 +2,7 @@ const ECO_PER_KM_FEE = 2800;
 
 class EcoShippingStrategy {
   constructor() {
-    this.code = "ECO";
+    this.code = 'ECO';
   }
 
   calculate(distanceKm) {

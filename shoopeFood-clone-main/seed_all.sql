@@ -108,8 +108,15 @@ CREATE TABLE IF NOT EXISTS restaurants (
     opening_time TIME           DEFAULT '07:00:00',
     closing_time TIME           DEFAULT '22:00:00',
     is_open      TINYINT(1)     DEFAULT 1,
+    is_open_today TINYINT(1)    DEFAULT 1,
+    temporary_closed_reason TEXT,
+    temporary_closed_until DATE,
     image_url    VARCHAR(255),
     rating_avg   DECIMAL(3,2)   DEFAULT 5.0,
+    approval_status VARCHAR(20) DEFAULT 'PENDING',
+    approved_by  INT,
+    approved_at  DATE,
+    reject_reason TEXT,
     deleted_at   TIMESTAMP      NULL DEFAULT NULL,
     FOREIGN KEY (owner_id) REFERENCES users(id)
 );
@@ -349,9 +356,9 @@ INSERT INTO system_settings (config_key, config_value, description) VALUES
 INSERT INTO vouchers (code, discount_amount, min_order_value, expiry_date) VALUES
 ('FREESHIP',15000.00,50000.00,'2026-12-31 23:59:59');
 
-INSERT INTO restaurants (owner_id, name, address, latitude, longitude, is_open) VALUES
-(3,'Hanh Dung - Am Thuc Chay Man','111-113 Au Co, P.14, Q.11',10.771,106.649,1),
-(3,'Quan Chay Thanh Ai',          '264 Ba Hat, P.9, Q.10',    10.765,106.671,1);
+INSERT INTO restaurants (owner_id, name, address, latitude, longitude, is_open, approval_status) VALUES
+(3,'Hanh Dung - Am Thuc Chay Man','111-113 Au Co, P.14, Q.11',10.771,106.649,1,'APPROVED'),
+(3,'Quan Chay Thanh Ai',          '264 Ba Hat, P.9, Q.10',    10.765,106.671,1,'APPROVED');
 
 INSERT INTO categories (restaurant_id, name) VALUES
 (1,'Mon chinh'),(1,'Nuoc uong'),(2,'Diem tam');

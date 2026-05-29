@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e40af 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      background: rgba(255,255,255,0.07);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    .logo-text h1 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .logo-text p {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 8px;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #fff;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      -webkit-appearance: none;
+    }
+
+    input::placeholder { color: rgba(255,255,255,0.35); }
+    select option { background: #1e1b4b; color: #fff; }
+
+    input:focus, select:focus {
+      border-color: rgba(249,115,22,0.8);
+      background: rgba(255,255,255,0.15);
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      margin-top: 8px;
+    }
+
+    .btn-login:hover { opacity: 0.92; }
+    .btn-login:active { transform: scale(0.98); }
+    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      display: none;
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.4);
+      color: #fca5a5;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      margin: 28px 0;
+    }
+
+    .demo-accounts {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .demo-accounts strong {
+      display: block;
+      margin-bottom: 8px;
+      color: rgba(255,255,255,0.65);
+    }
+
+    .demo-accounts code {
+      background: rgba(255,255,255,0.08);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+
+    .demo-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <div class="logo">
+      <div class="logo-icon">🍔</div>
+      <div class="logo-text">
+        <h1>Order Ops</h1>
+        <p>Admin Dashboard</p>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <div class="form-group">
+      <label for="phone">Số điện thoại</label>
+      <input type="tel" id="phone" placeholder="0900000005" autocomplete="username">
+    </div>
+
+    <div class="form-group">
+      <label for="password">Mật khẩu</label>
+      <input type="password" id="password" placeholder="••••••" autocomplete="current-password">
+    </div>
+
+    <div class="form-group">
+      <label for="role">Đăng nhập với vai trò</label>
+      <select id="role">
+        <option value="ADMIN">Admin</option>
+        <option value="MERCHANT">Merchant</option>
+      </select>
+    </div>
+
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Đăng nhập</button>
+
+    <hr class="divider">
+
+    <div class="demo-accounts">
+      <strong>Tài khoản demo:</strong>
+      <div class="demo-row">
+        <span>Admin: <code>0900000005 / 123456</code></span>
+      </div>
+      <div class="demo-row" style="margin-top:4px">
+        <span>Merchant: <code>0900000003 / 123456</code></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // If already logged in, redirect to dashboard
+    if (localStorage.getItem('dashboardToken')) {
+      window.location.href = '/orders-dashboard';
+    }
+
+    async function doLogin() {
+      const phone = document.getElementById('phone').value.trim();
+      const password = document.getElementById('password').value;
+      const role = document.getElementById('role').value;
+      const btn = document.getElementById('btn-login');
+      const errEl = document.getElementById('error-msg');
+
+      errEl.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Đang đăng nhập...';
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, password, role })
+        });
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          errEl.textContent = json.message || 'Đăng nhập thất bại';
+          errEl.style.display = 'block';
+          return;
+        }
+
+        // Store token and user info
+        localStorage.setItem('dashboardToken', json.data.token);
+        localStorage.setItem('dashboardUser', JSON.stringify(json.data.user));
+
+        window.location.href = '/orders-dashboard';
+      } catch (e) {
+        errEl.textContent = 'Lỗi kết nối máy chủ';
+        errEl.style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Đăng nhập';
+      }
+    }
+
+    // Enter key support
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doLogin();
+    });
+  </script>
+</body>
+</html>

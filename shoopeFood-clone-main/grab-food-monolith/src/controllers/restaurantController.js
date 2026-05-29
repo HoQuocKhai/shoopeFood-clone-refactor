@@ -1,5 +1,5 @@
-const { Restaurant, RestaurantChangeRequest, User } = require("../models");
-const { Op } = require("sequelize");
+const { Restaurant, RestaurantChangeRequest, User } = require('../models');
+const { Op } = require('sequelize');
 
 // ==== HELPER FUNCTIONS ====
 
@@ -7,18 +7,18 @@ const normalizeRestaurant = (item) => ({
   id: item.id,
   ownerId: item.ownerId,
   name: item.name,
-  address: item.address || "",
+  address: item.address || '',
   latitude: Number(item.latitude || 0),
   longitude: Number(item.longitude || 0),
-  openingTime: item.openingTime || "07:00:00",
-  closingTime: item.closingTime || "22:00:00",
+  openingTime: item.openingTime || '07:00:00',
+  closingTime: item.closingTime || '22:00:00',
   isOpen: Boolean(item.isOpen),
   isOpenToday: Boolean(item.isOpenToday),
   temporaryClosedReason: item.temporaryClosedReason || null,
   temporaryClosedUntil: item.temporaryClosedUntil || null,
   imageUrl: item.imageUrl || null,
   ratingAvg: Number(item.ratingAvg || 5.0),
-  approvalStatus: item.approvalStatus || "PENDING",
+  approvalStatus: item.approvalStatus || 'PENDING',
   approvedBy: item.approvedBy || null,
   approvedAt: item.approvedAt || null,
   rejectReason: item.rejectReason || null,
@@ -41,13 +41,13 @@ const verifyCoordinates = (lat, lng) => {
   const latitude = Number(lat);
   const longitude = Number(lng);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-    return { valid: false, error: "Coordinates must be numbers" };
+    return { valid: false, error: 'Coordinates must be numbers' };
   }
   if (latitude < -90 || latitude > 90) {
-    return { valid: false, error: "Latitude must be between -90 and 90" };
+    return { valid: false, error: 'Latitude must be between -90 and 90' };
   }
   if (longitude < -180 || longitude > 180) {
-    return { valid: false, error: "Longitude must be between -180 and 180" };
+    return { valid: false, error: 'Longitude must be between -180 and 180' };
   }
   return { valid: true, latitude, longitude };
 };
@@ -55,15 +55,15 @@ const verifyCoordinates = (lat, lng) => {
 const verifyTimes = (openingTime, closingTime) => {
   const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$/;
   if (!timeRegex.test(openingTime)) {
-    return { valid: false, error: "Invalid openingTime format (HH:mm or HH:mm:ss)" };
+    return { valid: false, error: 'Invalid openingTime format (HH:mm or HH:mm:ss)' };
   }
   if (!timeRegex.test(closingTime)) {
-    return { valid: false, error: "Invalid closingTime format (HH:mm or HH:mm:ss)" };
+    return { valid: false, error: 'Invalid closingTime format (HH:mm or HH:mm:ss)' };
   }
-  const open = openingTime.split(":").slice(0, 2).join(":");
-  const close = closingTime.split(":").slice(0, 2).join(":");
+  const open = openingTime.split(':').slice(0, 2).join(':');
+  const close = closingTime.split(':').slice(0, 2).join(':');
   if (open >= close) {
-    return { valid: false, error: "closingTime must be after openingTime" };
+    return { valid: false, error: 'closingTime must be after openingTime' };
   }
   return { valid: true };
 };
@@ -96,11 +96,11 @@ exports.listRestaurants = async (req, res) => {
   try {
     const { includePending } = req.query;
     const where = { deletedAt: null };
-    if (includePending !== "true") {
-      where.approvalStatus = "APPROVED";
+    if (includePending !== 'true') {
+      where.approvalStatus = 'APPROVED';
     }
-    const items = await Restaurant.findAll({ where, order: [["id", "ASC"]] });
-    return withSuccess(res, 200, "Restaurants fetched", items.map(normalizeRestaurant));
+    const items = await Restaurant.findAll({ where, order: [['id', 'ASC']] });
+    return withSuccess(res, 200, 'Restaurants fetched', items.map(normalizeRestaurant));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -117,10 +117,10 @@ exports.getRestaurantById = async (req, res) => {
     });
 
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
-    return withSuccess(res, 200, "Restaurant fetched", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Restaurant fetched', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -133,15 +133,15 @@ exports.listMyRestaurants = async (req, res) => {
   try {
     const ownerId = req.user?.id;
     if (!ownerId) {
-      return withError(res, 401, "User not authenticated");
+      return withError(res, 401, 'User not authenticated');
     }
 
     const items = await Restaurant.findAll({
       where: { ownerId, deletedAt: null },
-      order: [["id", "ASC"]],
+      order: [['id', 'ASC']],
     });
 
-    return withSuccess(res, 200, "My restaurants fetched", items.map(normalizeRestaurant));
+    return withSuccess(res, 200, 'My restaurants fetched', items.map(normalizeRestaurant));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -160,8 +160,8 @@ exports.createRestaurant = async (req, res) => {
       address,
       latitude = 0,
       longitude = 0,
-      openingTime = "07:00:00",
-      closingTime = "22:00:00",
+      openingTime = '07:00:00',
+      closingTime = '22:00:00',
       isOpen = true,
       imageUrl = null,
       ratingAvg = 5.0,
@@ -169,18 +169,18 @@ exports.createRestaurant = async (req, res) => {
 
     // Validate required fields
     if (!ownerId || !name) {
-      return withError(res, 400, "ownerId and name are required");
+      return withError(res, 400, 'ownerId and name are required');
     }
 
     const normalizedOwnerId = Number(ownerId);
     if (!Number.isFinite(normalizedOwnerId)) {
-      return withError(res, 400, "ownerId must be a number");
+      return withError(res, 400, 'ownerId must be a number');
     }
 
     // Check owner exists
     const owner = await User.findByPk(normalizedOwnerId);
     if (!owner) {
-      return withError(res, 400, "Owner not found");
+      return withError(res, 400, 'Owner not found');
     }
 
     // Verify coordinates
@@ -198,7 +198,7 @@ exports.createRestaurant = async (req, res) => {
     const newRestaurant = await Restaurant.create({
       ownerId: normalizedOwnerId,
       name: String(name).trim(),
-      address: String(address || "").trim(),
+      address: String(address || '').trim(),
       latitude: coordCheck.latitude,
       longitude: coordCheck.longitude,
       openingTime: openingTime.trim(),
@@ -206,10 +206,10 @@ exports.createRestaurant = async (req, res) => {
       isOpen: Boolean(isOpen),
       imageUrl: imageUrl ? String(imageUrl).trim() : null,
       ratingAvg: Number.isFinite(Number(ratingAvg)) ? Number(ratingAvg) : 5.0,
-      approvalStatus: "PENDING",
+      approvalStatus: 'PENDING',
     });
 
-    return withSuccess(res, 201, "Restaurant created", normalizeRestaurant(newRestaurant));
+    return withSuccess(res, 201, 'Restaurant created', normalizeRestaurant(newRestaurant));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -226,13 +226,28 @@ exports.updateRestaurant = async (req, res) => {
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
 
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
     // Fields that don't require approval
-    const directFields = ["openingTime", "closingTime", "isOpen", "isOpenToday", "temporaryClosedReason", "temporaryClosedUntil"];
+    const directFields = [
+      'openingTime',
+      'closingTime',
+      'isOpen',
+      'isOpenToday',
+      'temporaryClosedReason',
+      'temporaryClosedUntil',
+    ];
     // Fields that require approval
-    const approvalFields = ["ownerId", "name", "address", "latitude", "longitude", "imageUrl", "ratingAvg"];
+    const approvalFields = [
+      'ownerId',
+      'name',
+      'address',
+      'latitude',
+      'longitude',
+      'imageUrl',
+      'ratingAvg',
+    ];
 
     const directUpdates = pickDefined(req.body, directFields);
     const approvalUpdates = pickDefined(req.body, approvalFields);
@@ -258,17 +273,19 @@ exports.updateRestaurant = async (req, res) => {
       if (approvalUpdates.ownerId) {
         const newOwnerId = Number(approvalUpdates.ownerId);
         if (!Number.isFinite(newOwnerId)) {
-          return withError(res, 400, "ownerId must be a number");
+          return withError(res, 400, 'ownerId must be a number');
         }
         const owner = await User.findByPk(newOwnerId);
         if (!owner) {
-          return withError(res, 400, "New owner not found");
+          return withError(res, 400, 'New owner not found');
         }
       }
 
       if (approvalUpdates.latitude !== undefined || approvalUpdates.longitude !== undefined) {
-        const lat = approvalUpdates.latitude !== undefined ? approvalUpdates.latitude : item.latitude;
-        const lng = approvalUpdates.longitude !== undefined ? approvalUpdates.longitude : item.longitude;
+        const lat =
+          approvalUpdates.latitude !== undefined ? approvalUpdates.latitude : item.latitude;
+        const lng =
+          approvalUpdates.longitude !== undefined ? approvalUpdates.longitude : item.longitude;
         const coordCheck = verifyCoordinates(lat, lng);
         if (!coordCheck.valid) {
           return withError(res, 400, coordCheck.error);
@@ -280,11 +297,11 @@ exports.updateRestaurant = async (req, res) => {
         restaurantId: id,
         requestedBy: req.user?.id || item.ownerId,
         payload: approvalUpdates,
-        status: "PENDING",
+        status: 'PENDING',
       });
     }
 
-    return withSuccess(res, 200, "Restaurant updated", {
+    return withSuccess(res, 200, 'Restaurant updated', {
       restaurant: normalizeRestaurant(item),
       changeRequest: changeRequest ? normalizeChangeRequest(changeRequest) : null,
     });
@@ -302,12 +319,12 @@ exports.deleteRestaurant = async (req, res) => {
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
 
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
     await item.update({ deletedAt: new Date() });
 
-    return withSuccess(res, 200, "Restaurant deleted", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Restaurant deleted', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -325,14 +342,14 @@ exports.patchRestaurantStatus = async (req, res) => {
 
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
     if (isOpen !== undefined) {
       await item.update({ isOpen: Boolean(isOpen) });
     }
 
-    return withSuccess(res, 200, "Status updated", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Status updated', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -348,7 +365,7 @@ exports.patchRestaurantTodayStatus = async (req, res) => {
 
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
     const updates = {};
@@ -366,7 +383,7 @@ exports.patchRestaurantTodayStatus = async (req, res) => {
       await item.update(updates);
     }
 
-    return withSuccess(res, 200, "Today status updated", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Today status updated', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -382,11 +399,11 @@ exports.patchRestaurantLocation = async (req, res) => {
 
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
     if (latitude === undefined || longitude === undefined) {
-      return withError(res, 400, "latitude and longitude are required");
+      return withError(res, 400, 'latitude and longitude are required');
     }
 
     const coordCheck = verifyCoordinates(latitude, longitude);
@@ -399,7 +416,7 @@ exports.patchRestaurantLocation = async (req, res) => {
       longitude: coordCheck.longitude,
     });
 
-    return withSuccess(res, 200, "Location updated", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Location updated', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -413,11 +430,11 @@ exports.patchRestaurantLocation = async (req, res) => {
 exports.listPendingRestaurants = async (req, res) => {
   try {
     const items = await Restaurant.findAll({
-      where: { approvalStatus: "PENDING", deletedAt: null },
-      order: [["id", "ASC"]],
+      where: { approvalStatus: 'PENDING', deletedAt: null },
+      order: [['id', 'ASC']],
     });
 
-    return withSuccess(res, 200, "Pending restaurants fetched", items.map(normalizeRestaurant));
+    return withSuccess(res, 200, 'Pending restaurants fetched', items.map(normalizeRestaurant));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -433,22 +450,22 @@ exports.approveRestaurant = async (req, res) => {
 
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
-    if (item.approvalStatus !== "PENDING") {
+    if (item.approvalStatus !== 'PENDING') {
       return withError(res, 400, `Restaurant is already ${item.approvalStatus}`);
     }
 
     await item.update({
-      approvalStatus: "APPROVED",
+      approvalStatus: 'APPROVED',
       approvedBy: approvedBy || req.user?.id,
       approvedAt: new Date(),
       isOpen: true,
       isOpenToday: true,
     });
 
-    return withSuccess(res, 200, "Restaurant approved", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Restaurant approved', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -464,21 +481,21 @@ exports.rejectRestaurant = async (req, res) => {
 
     const item = await Restaurant.findOne({ where: { id, deletedAt: null } });
     if (!item) {
-      return withError(res, 404, "Restaurant not found");
+      return withError(res, 404, 'Restaurant not found');
     }
 
-    if (item.approvalStatus !== "PENDING") {
+    if (item.approvalStatus !== 'PENDING') {
       return withError(res, 400, `Restaurant is already ${item.approvalStatus}`);
     }
 
     await item.update({
-      approvalStatus: "REJECTED",
+      approvalStatus: 'REJECTED',
       rejectReason: reason ? String(reason).trim() : null,
       isOpen: false,
       isOpenToday: false,
     });
 
-    return withSuccess(res, 200, "Restaurant rejected", normalizeRestaurant(item));
+    return withSuccess(res, 200, 'Restaurant rejected', normalizeRestaurant(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -491,7 +508,7 @@ exports.rejectRestaurant = async (req, res) => {
  */
 exports.listChangeRequests = async (req, res) => {
   try {
-    const { status = "PENDING" } = req.query;
+    const { status = 'PENDING' } = req.query;
     const where = {};
     if (status) {
       where.status = status;
@@ -499,10 +516,10 @@ exports.listChangeRequests = async (req, res) => {
 
     const items = await RestaurantChangeRequest.findAll({
       where,
-      order: [["id", "DESC"]],
+      order: [['id', 'DESC']],
     });
 
-    return withSuccess(res, 200, "Change requests fetched", items.map(normalizeChangeRequest));
+    return withSuccess(res, 200, 'Change requests fetched', items.map(normalizeChangeRequest));
   } catch (error) {
     return withError(res, 500, error.message);
   }
@@ -518,17 +535,17 @@ exports.approveChangeRequest = async (req, res) => {
 
     const item = await RestaurantChangeRequest.findByPk(id);
     if (!item) {
-      return withError(res, 404, "Change request not found");
+      return withError(res, 404, 'Change request not found');
     }
 
-    if (item.status !== "PENDING") {
+    if (item.status !== 'PENDING') {
       return withError(res, 400, `Change request is already ${item.status}`);
     }
 
     // Get restaurant and apply changes
     const restaurant = await Restaurant.findByPk(item.restaurantId);
     if (!restaurant) {
-      return withError(res, 404, "Associated restaurant not found");
+      return withError(res, 404, 'Associated restaurant not found');
     }
 
     // Apply payload changes to restaurant
@@ -536,12 +553,12 @@ exports.approveChangeRequest = async (req, res) => {
 
     // Update change request
     await item.update({
-      status: "APPROVED",
+      status: 'APPROVED',
       reviewedBy: reviewedBy || req.user?.id,
       reviewedAt: new Date(),
     });
 
-    return withSuccess(res, 200, "Change request approved", {
+    return withSuccess(res, 200, 'Change request approved', {
       changeRequest: normalizeChangeRequest(item),
       restaurant: normalizeRestaurant(restaurant),
     });
@@ -560,19 +577,19 @@ exports.rejectChangeRequest = async (req, res) => {
 
     const item = await RestaurantChangeRequest.findByPk(id);
     if (!item) {
-      return withError(res, 404, "Change request not found");
+      return withError(res, 404, 'Change request not found');
     }
 
-    if (item.status !== "PENDING") {
+    if (item.status !== 'PENDING') {
       return withError(res, 400, `Change request is already ${item.status}`);
     }
 
     await item.update({
-      status: "REJECTED",
+      status: 'REJECTED',
       rejectReason: reason ? String(reason).trim() : null,
     });
 
-    return withSuccess(res, 200, "Change request rejected", normalizeChangeRequest(item));
+    return withSuccess(res, 200, 'Change request rejected', normalizeChangeRequest(item));
   } catch (error) {
     return withError(res, 500, error.message);
   }

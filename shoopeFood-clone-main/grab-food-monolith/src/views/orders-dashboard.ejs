@@ -1,339 +1,848 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= title %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg-color: #f3f4f6;
-      --card-bg: #ffffff;
-      --text-color: #1f2937;
-      --text-muted: #6b7280;
-      --border-color: #e5e7eb;
+      --bg: #f1f5f9;
+      --sidebar: #0f172a;
+      --card: #ffffff;
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
-      
-      --status-pending: #ca8a04;
-      --status-pending-bg: #fef08a;
-      --status-success: #15803d;
-      --status-success-bg: #bbf7d0;
-      --status-failed: #b91c1c;
-      --status-failed-bg: #fecaca;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --warning: #ca8a04;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
     }
 
-    * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
-    
-    body {
-      margin: 0; padding: 20px;
-      background-color: var(--bg-color); color: var(--text-color);
-      min-height: 100vh;
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────────────────── */
+    .sidebar {
+      width: 240px; flex-shrink: 0;
+      background: var(--sidebar);
+      display: flex; flex-direction: column;
+      padding: 24px 0;
+      position: fixed; top: 0; left: 0; height: 100vh;
     }
 
-    .dashboard-container {
-      max-width: 1200px;
-      margin: 0 auto;
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 24px 24px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
-    .header {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 24px;
+    .sidebar-logo-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: linear-gradient(135deg, #f97316, #ef4444);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
-    
-    .header h1 { margin: 0; font-size: 24px; color: #111827; }
 
-    .filters-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      display: flex; gap: 16px; align-items: flex-end;
+    .sidebar-logo-text { color: #fff; }
+    .sidebar-logo-text h2 { font-size: 15px; font-weight: 700; }
+    .sidebar-logo-text p  { font-size: 11px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+    .sidebar-nav { padding: 16px 12px; flex: 1; }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px;
+      color: rgba(255,255,255,0.6); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; text-decoration: none; margin-bottom: 4px;
+    }
+
+    .nav-item.active, .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+    .sidebar-user {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .sidebar-user-info { display: flex; align-items: center; gap: 10px; }
+
+    .user-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700; color: #fff;
+    }
+
+    .user-meta { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+
+    .btn-logout {
+      background: none; border: none; color: rgba(255,255,255,0.4);
+      cursor: pointer; font-size: 18px; padding: 4px; transition: color 0.15s;
+      line-height: 1;
+    }
+
+    .btn-logout:hover { color: #ef4444; }
+
+    /* ── Main ────────────────────────────────────────────── */
+    .main { margin-left: 240px; flex: 1; padding: 32px; }
+
+    .page-header {
+      display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px;
+    }
+
+    .page-title h1 { font-size: 22px; font-weight: 700; color: var(--text); }
+    .page-title p  { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    .socket-badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0;
+    }
+
+    .socket-badge.disconnected { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
+    .socket-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+    /* ── Filter Bar ──────────────────────────────────────── */
+    .filter-card {
+      background: var(--card); border-radius: 14px; padding: 20px;
+      box-shadow: var(--shadow); margin-bottom: 24px;
+      display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;
     }
 
     .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 14px; font-weight: 500; color: var(--text-muted); }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+
     .form-group select, .form-group input {
-      padding: 10px 14px; border: 1px solid var(--border-color);
-      border-radius: 8px; font-size: 14px; outline: none;
-      transition: border-color 0.2s;
+      padding: 9px 13px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 14px; font-family: inherit; color: var(--text);
+      background: #f8fafc; outline: none; transition: border-color 0.2s, background 0.2s;
     }
-    .form-group select:focus, .form-group input:focus { border-color: var(--primary); }
+
+    .form-group select:focus, .form-group input:focus {
+      border-color: var(--primary); background: #fff;
+    }
 
     .btn {
-      padding: 10px 20px;
-      background: var(--primary); color: white;
-      border: none; border-radius: 8px; font-size: 14px; font-weight: 500;
-      cursor: pointer; transition: background 0.2s, transform 0.1s;
+      padding: 9px 18px; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: all 0.15s;
     }
-    .btn:hover { background: var(--primary-hover); }
-    .btn:active { transform: scale(0.98); }
 
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+    .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-danger { background: #fee2e2; color: var(--danger); }
+    .btn-danger:hover { background: #fecaca; }
+
+    /* ── Table Card ──────────────────────────────────────── */
     .table-card {
-      background: var(--card-bg);
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-      overflow: hidden;
+      background: var(--card); border-radius: 14px;
+      box-shadow: var(--shadow); overflow: hidden;
     }
+
+    .table-header {
+      padding: 18px 24px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    .table-header h3 { font-size: 15px; font-weight: 600; }
+    .order-count { font-size: 12px; color: var(--muted); background: var(--bg); padding: 3px 10px; border-radius: 20px; }
 
     table { width: 100%; border-collapse: collapse; }
-    th, td {
-      padding: 16px; text-align: left;
-      border-bottom: 1px solid var(--border-color);
-    }
+
     th {
-      background: #f9fafb; font-size: 13px; font-weight: 600;
-      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 12px 16px; text-align: left;
+      background: #f8fafc; font-size: 11px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
     }
-    td { font-size: 14px; }
+
+    td { padding: 14px 16px; font-size: 13px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
     tr:last-child td { border-bottom: none; }
-    tr { transition: background 0.2s; }
-    tr:hover { background: #f9fafb; }
+    tr:hover td { background: #f8fafc; }
 
-    .tag {
-      padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 600;
-      display: inline-block;
+    /* ── Badges ──────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 600;
     }
-    .tag.pending { background: var(--status-pending-bg); color: var(--status-pending); }
-    .tag.success { background: var(--status-success-bg); color: var(--status-success); }
-    .tag.failed { background: var(--status-failed-bg); color: var(--status-failed); }
 
-    /* Modal */
-    .modal {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-      align-items: center; justify-content: center; backdrop-filter: blur(4px);
+    .badge-pending  { background: #fef9c3; color: #854d0e; }
+    .badge-confirmed{ background: #dbeafe; color: #1e40af; }
+    .badge-picking  { background: #e0e7ff; color: #3730a3; }
+    .badge-delivering{ background: #fce7f3; color: #9d174d; }
+    .badge-completed{ background: #dcfce7; color: #14532d; }
+    .badge-cancelled{ background: #fee2e2; color: #7f1d1d; }
+    .badge-success  { background: #dcfce7; color: #14532d; }
+    .badge-failed   { background: #fee2e2; color: #7f1d1d; }
+    .badge-default  { background: #f1f5f9; color: #475569; }
+
+    /* ── Loading / Empty ─────────────────────────────────── */
+    .state-row td {
+      text-align: center; padding: 60px 24px;
+      color: var(--muted); font-size: 14px;
     }
-    .modal.active { display: flex; animation: fadeIn 0.2s ease-out; }
-    .modal-content {
-      background: var(--card-bg); width: 400px; padding: 24px;
-      border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-      transform: scale(0.95); animation: scaleUp 0.2s forwards;
+
+    .spinner {
+      display: inline-block; width: 32px; height: 32px;
+      border: 3px solid var(--border); border-top-color: var(--primary);
+      border-radius: 50%; animation: spin 0.7s linear infinite;
     }
-    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    .modal-header h2 { margin: 0; font-size: 18px; }
-    .close-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); }
 
-    /* Animations */
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes scaleUp { to { transform: scale(1); } }
-    
-    .new-row { animation: highlightRow 2s forwards; }
-    @keyframes highlightRow { 0% { background: #e0f2fe; } 100% { background: transparent; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ── Modals ──────────────────────────────────────────── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(15,23,42,0.5); backdrop-filter: blur(4px);
+      align-items: center; justify-content: center; z-index: 100;
+    }
+
+    .modal-overlay.open { display: flex; animation: fadeIn 0.15s ease; }
+
+    .modal-box {
+      background: var(--card); border-radius: 16px; width: 100%; max-width: 480px;
+      max-height: 85vh; overflow-y: auto;
+      box-shadow: var(--shadow-lg); animation: slideUp 0.2s ease;
+    }
+
+    .modal-box.wide { max-width: 620px; }
+
+    .modal-head {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 20px 24px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--card); z-index: 1;
+    }
+
+    .modal-head h3 { font-size: 16px; font-weight: 700; }
+    .modal-close { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--muted); line-height: 1; padding: 0; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 24px; }
+
+    .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: var(--muted); font-weight: 500; }
+    .detail-value { font-weight: 600; text-align: right; }
+
+    .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin: 20px 0 12px; }
+
+    .transaction-item {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px; margin-bottom: 8px; font-size: 12px;
+    }
+
+    .transaction-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .transaction-ref { font-family: monospace; font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    .toast-container {
+      position: fixed; top: 24px; right: 24px; z-index: 999;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 500;
+      box-shadow: var(--shadow-lg); animation: slideLeft 0.25s ease;
+      max-width: 340px;
+    }
+
+    .toast-success { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .toast-error   { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .toast-warning { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+
+    /* ── New row animation ───────────────────────────────── */
+    .new-row td { animation: highlightRow 2.5s forwards; }
+    @keyframes highlightRow { 0%,20% { background: #dbeafe; } 100% { background: transparent; } }
+
+    @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes slideLeft { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   </style>
 </head>
 <body>
 
-  <div class="dashboard-container">
-    <div class="header">
-      <h1>Order Ops Dashboard</h1>
-      <div id="connection-status" style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
-        Socket Connected
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">🍔</div>
+      <div class="sidebar-logo-text">
+        <h2>Order Ops</h2>
+        <p id="sidebar-role">Dashboard</p>
       </div>
     </div>
 
-    <!-- Filtes -->
-    <div class="filters-card">
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="/orders-dashboard">📋 Đơn hàng</a>
+      <a class="nav-item" href="/map">🗺️ Bản đồ</a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="sidebar-user-info">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-meta">
+          <div class="user-name" id="user-name">Đang tải...</div>
+          <div class="user-role" id="user-role-label">-</div>
+        </div>
+        <button class="btn-logout" onclick="logout()" title="Đăng xuất">⏏</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">
+        <h1>Quản lý Đơn hàng</h1>
+        <p>Xem và cập nhật trạng thái đơn hàng theo thời gian thực</p>
+      </div>
+      <div id="socket-badge" class="socket-badge disconnected">
+        <span class="socket-dot"></span>
+        <span id="socket-label">Đang kết nối...</span>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-card">
       <div class="form-group">
-        <label>Status</label>
+        <label>Trạng thái</label>
         <select id="filter-status">
-          <option value="">All Statuses</option>
-          <option value="1">Pending</option>
-          <option value="4">Confirmed</option>
-          <option value="6">Delivering</option>
-          <option value="7">Completed</option>
-          <option value="8">Cancelled</option>
+          <option value="">Tất cả</option>
         </select>
       </div>
       <div class="form-group">
-        <label>From Date</label>
+        <label>Từ ngày</label>
         <input type="date" id="filter-from">
       </div>
       <div class="form-group">
-        <label>To Date</label>
+        <label>Đến ngày</label>
         <input type="date" id="filter-to">
       </div>
-      <button class="btn" onclick="fetchOrders()">Filter Orders</button>
+      <button class="btn btn-primary" onclick="fetchOrders()">🔍 Lọc</button>
+      <button class="btn btn-ghost" onclick="clearFilters()">✕ Xóa bộ lọc</button>
     </div>
 
     <!-- Table -->
     <div class="table-card">
-      <table id="orders-table">
+      <div class="table-header">
+        <h3>Danh sách đơn hàng</h3>
+        <span class="order-count" id="order-count">0 đơn</span>
+      </div>
+      <table>
         <thead>
           <tr>
-            <th>Order ID / Code</th>
-            <th>Customer</th>
-            <th>Status</th>
-            <th>Payment</th>
-            <th>Total Amount</th>
-            <th>Created At</th>
-            <th>Action</th>
+            <th>Đơn hàng</th>
+            <th>Khách hàng</th>
+            <th>Trạng thái</th>
+            <th>Thanh toán</th>
+            <th>Tổng tiền</th>
+            <th>Thời gian</th>
+            <th>Thao tác</th>
           </tr>
         </thead>
-        <tbody>
-          <!-- Rendered via JS -->
+        <tbody id="orders-tbody">
+          <tr class="state-row"><td colspan="7"><div class="spinner"></div></td></tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </main>
 
-  <!-- Modal -->
-  <div class="modal" id="update-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Update Order Status</h2>
-        <button class="close-btn" onclick="closeModal()">&times;</button>
+  <!-- ── Modal: Update Status ── -->
+  <div class="modal-overlay" id="modal-status">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h3>Cập nhật trạng thái đơn</h3>
+        <button class="modal-close" onclick="closeModal('modal-status')">×</button>
       </div>
-      <div class="form-group" style="margin-bottom: 20px;">
-        <label>New Status</label>
-        <select id="update-status-select">
-          <option value="CONFIRMED">Confirmed</option>
-          <option value="DELIVERING">Delivering</option>
-          <option value="COMPLETED">Completed</option>
-          <option value="CANCELLED">Cancelled</option>
-        </select>
-      </div>
-      <input type="hidden" id="update-order-id">
-      <input type="hidden" id="update-order-version">
-      <div style="display: flex; gap: 12px; justify-content: flex-end;">
-        <button class="btn" style="background: var(--border-color); color: var(--text-color);" onclick="closeModal()">Cancel</button>
-        <button class="btn" onclick="submitUpdate()">Save Changes</button>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label>Trạng thái mới</label>
+          <select id="status-select"></select>
+        </div>
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label>Ghi chú (tuỳ chọn)</label>
+          <input type="text" id="status-reason" placeholder="Lý do cập nhật...">
+        </div>
+        <input type="hidden" id="status-order-id">
+        <input type="hidden" id="status-order-version">
+        <input type="hidden" id="status-order-current">
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+          <button class="btn btn-ghost" onclick="closeModal('modal-status')">Huỷ</button>
+          <button class="btn btn-primary" onclick="submitStatusUpdate()">Lưu thay đổi</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Audio for REALTIME notify -->
+  <!-- ── Modal: Payment Detail ── -->
+  <div class="modal-overlay" id="modal-payment">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>Chi tiết Thanh toán</h3>
+        <button class="modal-close" onclick="closeModal('modal-payment')">×</button>
+      </div>
+      <div class="modal-body" id="payment-modal-body">
+        <div style="text-align:center;padding:40px;"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Status History ── -->
+  <div class="modal-overlay" id="modal-history">
+    <div class="modal-box wide">
+      <div class="modal-head">
+        <h3>Lịch sử trạng thái</h3>
+        <button class="modal-close" onclick="closeModal('modal-history')">×</button>
+      </div>
+      <div class="modal-body" id="history-modal-body">
+        <div style="text-align:center;padding:40px;"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Audio notify -->
   <audio id="ting-audio" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
+    // ── Auth ─────────────────────────────────────────────────────────────────
+    const token = localStorage.getItem('dashboardToken');
+    const userRaw = localStorage.getItem('dashboardUser');
+
+    if (!token) {
+      window.location.href = '/dashboard-login';
+    }
+
+    let currentUser = null;
+    try { currentUser = JSON.parse(userRaw); } catch(e) {}
+
+    if (currentUser) {
+      const initials = (currentUser.fullName || '?').charAt(0).toUpperCase();
+      document.getElementById('user-avatar').textContent = initials;
+      document.getElementById('user-name').textContent = currentUser.fullName || currentUser.phone || 'User';
+      document.getElementById('user-role-label').textContent = currentUser.role || '';
+      document.getElementById('sidebar-role').textContent = currentUser.role || 'Dashboard';
+    }
+
+    function logout() {
+      localStorage.removeItem('dashboardToken');
+      localStorage.removeItem('dashboardUser');
+      window.location.href = '/dashboard-login';
+    }
+
+    function authHeaders() {
+      return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+    }
+
+    async function authFetch(url, opts = {}) {
+      const res = await fetch(url, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } });
+      if (res.status === 401) { logout(); return null; }
+      return res;
+    }
+
+    // ── State ─────────────────────────────────────────────────────────────────
     let ordersData = [];
+    let allStatuses = [];
+    let allTransitions = {};
 
-    // init socket
+    // ── Socket ────────────────────────────────────────────────────────────────
     const socket = io();
-    socket.on("connect", () => {
-      document.getElementById("connection-status").innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span> Socket Connected`;
-    });
-    socket.on("disconnect", () => {
-      document.getElementById("connection-status").innerHTML = `<span style="width: 8px; height: 8px; border-radius: 50%; background: #ef4444;"></span> Disconnected`;
+    const socketBadge = document.getElementById('socket-badge');
+    const socketLabel = document.getElementById('socket-label');
+
+    socket.on('connect', () => {
+      socketBadge.className = 'socket-badge';
+      socketLabel.textContent = 'Socket kết nối';
     });
 
-    socket.on("new_order", (order) => {
-      // Tiếng ting ting
-      document.getElementById("ting-audio").play().catch(e=>console.log("Audio play blocked",e));
-      
+    socket.on('disconnect', () => {
+      socketBadge.className = 'socket-badge disconnected';
+      socketLabel.textContent = 'Mất kết nối';
+    });
+
+    socket.on('new_order', (order) => {
+      document.getElementById('ting-audio').play().catch(() => {});
       ordersData.unshift(order);
       renderTable(order.id);
+      showToast(`🆕 Đơn mới #${order.id} từ ${order.customer}`, 'success');
     });
 
-    async function fetchOrders() {
-      const st = document.getElementById("filter-status").value;
-      const fr = document.getElementById("filter-from").value;
-      const to = document.getElementById("filter-to").value;
+    socket.on('order:updated', (order) => {
+      const idx = ordersData.findIndex(o => String(o.id) === String(order.id));
+      if (idx !== -1) { ordersData[idx] = order; renderTable(); }
+    });
 
-      let url = "/api/orders?";
-      if(st) url += `statusId=${st}&`;
-      if(fr) url += `fromDate=${fr}&`;
-      if(to) url += `toDate=${to}&`;
+    // ── Bootstrap ─────────────────────────────────────────────────────────────
+    async function init() {
+      await Promise.all([loadStatuses(), fetchOrders()]);
+    }
+
+    async function loadStatuses() {
+      try {
+        const [statusRes, transRes] = await Promise.all([
+          fetch('/api/order-statuses'),
+          fetch('/api/order-statuses/transitions')
+        ]);
+        const statusJson = await statusRes.json();
+        const transJson  = await transRes.json();
+
+        allStatuses    = statusJson.data || [];
+        allTransitions = transJson.data  || {};
+
+        // Populate filter dropdown
+        const sel = document.getElementById('filter-status');
+        allStatuses.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.code;
+          opt.textContent = s.label || s.code;
+          sel.appendChild(opt);
+        });
+      } catch(e) { console.error('Failed to load statuses', e); }
+    }
+
+    // ── Fetch orders ──────────────────────────────────────────────────────────
+    async function fetchOrders() {
+      showLoading();
+      const st = document.getElementById('filter-status').value;
+      const fr = document.getElementById('filter-from').value;
+      const to = document.getElementById('filter-to').value;
+
+      let url = '/api/orders?';
+      if (st) url += `statusCode=${encodeURIComponent(st)}&`;
+      if (fr) url += `fromDate=${fr}&`;
+      if (to) url += `toDate=${to}&`;
 
       try {
-        const res = await fetch(url);
+        const res = await authFetch(url);
+        if (!res) return;
+        if (!res.ok) {
+          const err = await res.json();
+          showToast(err.message || 'Không tải được danh sách đơn', 'error');
+          showEmpty();
+          return;
+        }
         const json = await res.json();
         ordersData = json.data || [];
         renderTable();
       } catch(e) {
-        console.error(e);
+        showToast('Lỗi kết nối mạng', 'error');
+        showEmpty();
       }
     }
 
-    function getTagClass(val) {
-      if(!val) return 'pending';
-      const v = val.toLowerCase();
-      if(v.includes('succ') || v.includes('complet')) return 'success';
-      if(v.includes('fail') || v.includes('cancel') || v.includes('timeout')) return 'failed';
-      return 'pending';
+    function clearFilters() {
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-from').value = '';
+      document.getElementById('filter-to').value = '';
+      fetchOrders();
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────────
+    function statusBadgeClass(code) {
+      const map = {
+        PENDING: 'badge-pending', CONFIRMED: 'badge-confirmed',
+        PICKING_UP: 'badge-picking', DELIVERING: 'badge-delivering',
+        COMPLETED: 'badge-success', CANCELLED: 'badge-failed',
+        SUCCESS: 'badge-success', FAILED: 'badge-failed',
+      };
+      return map[String(code || '').toUpperCase()] || 'badge-default';
+    }
+
+    function statusLabel(code) {
+      const s = allStatuses.find(x => x.code === code);
+      return s ? (s.label || code) : (code || '—');
     }
 
     function renderTable(highlightId = null) {
-      const tbody = document.querySelector("#orders-table tbody");
-      tbody.innerHTML = "";
-      
-      if(ordersData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#6b7280;padding:40px;">No orders found</td></tr>`;
-        return;
-      }
+      const tbody = document.getElementById('orders-tbody');
+      document.getElementById('order-count').textContent = `${ordersData.length} đơn`;
 
+      if (ordersData.length === 0) { showEmpty(); return; }
+
+      tbody.innerHTML = '';
       ordersData.forEach(o => {
-        const tr = document.createElement("tr");
-        if(o.id === highlightId) tr.className = "new-row";
+        const tr = document.createElement('tr');
+        if (String(o.id) === String(highlightId)) tr.className = 'new-row';
+
+        const payMethod = o.paymentMethod || '—';
+        const payStatus = o.paymentStatus || 'PENDING';
+        const currentStatusCode = o.status || o.statusCode || '';
+        const validNextCodes = allTransitions[currentStatusCode] || [];
+        const canUpdate = validNextCodes.length > 0;
 
         tr.innerHTML = `
-          <td><strong>#${o.id}</strong><br><small style="color:var(--text-muted)">${o.orderCode}</small></td>
-          <td>${o.customer}</td>
-          <td><span class="tag ${getTagClass(o.status)}">${o.statusLabel || o.status}</span></td>
           <td>
-            <div style="font-size:13px; font-weight:500;">${o.paymentMethod || 'CASH'}</div>
-            <span class="tag ${getTagClass(o.paymentStatus)}" style="font-size:10px; padding:2px 6px;">${o.paymentStatus || 'PENDING'}</span>
+            <div style="font-weight:700;font-size:13px;">#${o.id}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px;">${o.orderCode || ''}</div>
           </td>
-          <td style="font-weight:600;">đ${Number(o.totalAmount).toLocaleString()}</td>
-          <td><small style="color:var(--text-muted)">${new Date(o.createdAt).toLocaleString()}</small></td>
+          <td style="font-weight:500;">${o.customer || '—'}</td>
+          <td><span class="badge ${statusBadgeClass(currentStatusCode)}">${statusLabel(currentStatusCode)}</span></td>
           <td>
-            <button class="btn" style="padding:6px 12px; font-size:12px;" onclick="openModal('${o.id}', '${o.version}')">Update Status</button>
+            <div style="font-size:12px;font-weight:600;">${payMethod}</div>
+            <span class="badge ${statusBadgeClass(payStatus)}" style="margin-top:3px;font-size:10px;">${payStatus}</span>
+          </td>
+          <td style="font-weight:700;">đ${Number(o.totalAmount || 0).toLocaleString('vi-VN')}</td>
+          <td style="font-size:12px;color:var(--muted);">${new Date(o.createdAt).toLocaleString('vi-VN')}</td>
+          <td>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              ${canUpdate ? `<button class="btn btn-sm btn-primary" onclick="openStatusModal('${o.id}','${o.version}','${currentStatusCode}')">✏️ Trạng thái</button>` : `<span style="font-size:11px;color:var(--muted);">Terminal</span>`}
+              <button class="btn btn-sm btn-ghost" onclick="openPaymentModal('${o.id}')">💳 Payment</button>
+              <button class="btn btn-sm btn-ghost" onclick="openHistoryModal('${o.id}')">📋 Lịch sử</button>
+            </div>
           </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    function openModal(id, version) {
-      document.getElementById("update-order-id").value = id;
-      document.getElementById("update-order-version").value = version;
-      document.getElementById("update-modal").classList.add("active");
+    function showLoading() {
+      document.getElementById('orders-tbody').innerHTML =
+        '<tr class="state-row"><td colspan="7"><div class="spinner"></div><div style="margin-top:12px;">Đang tải...</div></td></tr>';
+      document.getElementById('order-count').textContent = '...';
     }
 
-    function closeModal() {
-      document.getElementById("update-modal").classList.remove("active");
+    function showEmpty() {
+      document.getElementById('orders-tbody').innerHTML =
+        '<tr class="state-row"><td colspan="7"><div style="font-size:32px;margin-bottom:8px;">📭</div><div>Không có đơn hàng nào</div></td></tr>';
+      document.getElementById('order-count').textContent = '0 đơn';
     }
 
-    async function submitUpdate() {
-      const id = document.getElementById("update-order-id").value;
-      const version = document.getElementById("update-order-version").value;
-      const status = document.getElementById("update-status-select").value;
+    // ── Status Modal ──────────────────────────────────────────────────────────
+    function openStatusModal(id, version, currentCode) {
+      const validCodes = allTransitions[currentCode] || [];
+
+      const sel = document.getElementById('status-select');
+      sel.innerHTML = '';
+
+      if (validCodes.length === 0) {
+        showToast('Đơn này đã ở trạng thái cuối, không thể thay đổi', 'warning');
+        return;
+      }
+
+      validCodes.forEach(code => {
+        const opt = document.createElement('option');
+        opt.value = code;
+        opt.textContent = statusLabel(code);
+        sel.appendChild(opt);
+      });
+
+      document.getElementById('status-order-id').value      = id;
+      document.getElementById('status-order-version').value = version;
+      document.getElementById('status-order-current').value = currentCode;
+      document.getElementById('status-reason').value        = '';
+
+      openModal('modal-status');
+    }
+
+    async function submitStatusUpdate() {
+      const id      = document.getElementById('status-order-id').value;
+      const version = parseInt(document.getElementById('status-order-version').value, 10);
+      const status  = document.getElementById('status-select').value;
+      const reason  = document.getElementById('status-reason').value.trim();
 
       try {
-        const res = await fetch(`/api/orders/${id}/status`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ statusCode: status, expectedVersion: parseInt(version) })
+        const res = await authFetch(`/api/orders/${id}/status`, {
+          method: 'PUT',
+          body: JSON.stringify({ statusCode: status, expectedVersion: version, reason: reason || undefined })
         });
-        
-        if(res.status === 409) {
-          alert("Giao dịch bị từ chối: Đơn hàng đã được Admin khác cập nhật (409 Conflict)!");
-          closeModal();
+
+        if (!res) return;
+
+        const json = await res.json();
+
+        if (res.status === 409) {
+          showToast('⚠️ Xung đột phiên bản: đơn đã bị người khác cập nhật. Đang tải lại...', 'warning');
+          closeModal('modal-status');
           fetchOrders();
           return;
         }
 
-        if(!res.ok) {
-          const e = await res.json();
-          alert("Lỗi: " + e.message);
+        if (res.status === 400) {
+          showToast(`❌ ${json.message}`, 'error');
           return;
         }
 
-        closeModal();
-        fetchOrders();
+        if (res.status === 403) {
+          showToast('🚫 Bạn không có quyền cập nhật đơn này', 'error');
+          closeModal('modal-status');
+          return;
+        }
 
+        if (!res.ok) {
+          showToast(`❌ Lỗi: ${json.message}`, 'error');
+          return;
+        }
+
+        showToast(`✅ Cập nhật trạng thái thành công → ${statusLabel(status)}`, 'success');
+        closeModal('modal-status');
+        fetchOrders();
       } catch(e) {
-        console.error(e);
-        alert("Lỗi mạng!");
+        showToast('❌ Lỗi kết nối mạng', 'error');
       }
     }
 
-    // load init
-    fetchOrders();
+    // ── Payment Modal ─────────────────────────────────────────────────────────
+    async function openPaymentModal(orderId) {
+      document.getElementById('payment-modal-body').innerHTML =
+        '<div style="text-align:center;padding:40px;"><div class="spinner"></div></div>';
+      openModal('modal-payment');
 
+      try {
+        const res = await authFetch(`/api/payments/${orderId}`);
+        if (!res) return;
+
+        const body = document.getElementById('payment-modal-body');
+
+        if (res.status === 404) {
+          body.innerHTML = `
+            <div style="text-align:center;padding:40px;color:var(--muted);">
+              <div style="font-size:32px;margin-bottom:8px;">💳</div>
+              <div>Chưa có thông tin thanh toán cho đơn này</div>
+            </div>`;
+          return;
+        }
+
+        const json = await res.json();
+        const p = json.data;
+        const txs = p.transactions || [];
+
+        const payStatusBadge = `<span class="badge ${statusBadgeClass(p.status)}">${p.status}</span>`;
+
+        const txHTML = txs.length === 0
+          ? '<div style="color:var(--muted);font-size:13px;text-align:center;padding:16px;">Chưa có transaction</div>'
+          : txs.map(tx => `
+            <div class="transaction-item">
+              <div class="transaction-header">
+                <span style="font-weight:600;">Lần ${tx.attemptNumber}</span>
+                <span class="badge ${statusBadgeClass(tx.status)}">${tx.status}${tx.gatewayResponse?.timeoutFlag ? ' (Timeout)' : ''}</span>
+              </div>
+              <div class="transaction-ref">${tx.transactionRef || '—'}</div>
+              <div style="margin-top:6px;color:var(--muted);">${tx.gatewayResponse?.message || ''}</div>
+            </div>`).join('');
+
+        body.innerHTML = `
+          <div class="detail-row"><span class="detail-label">Payment ID</span><span class="detail-value">#${p.id}</span></div>
+          <div class="detail-row"><span class="detail-label">Phương thức</span><span class="detail-value">${p.paymentMethod}</span></div>
+          <div class="detail-row"><span class="detail-label">Trạng thái</span><span class="detail-value">${payStatusBadge}</span></div>
+          <div class="detail-row"><span class="detail-label">Số tiền</span><span class="detail-value" style="color:var(--primary);">đ${Number(p.amount).toLocaleString('vi-VN')}</span></div>
+          <div class="detail-row"><span class="detail-label">Idempotency Key</span><span class="detail-value" style="font-size:11px;font-family:monospace;">${p.idempotencyKey || '—'}</span></div>
+          <div class="detail-row"><span class="detail-label">Tạo lúc</span><span class="detail-value">${new Date(p.createdAt).toLocaleString('vi-VN')}</span></div>
+
+          <div class="section-title">Transactions (${txs.length})</div>
+          ${txHTML}
+
+          ${currentUser && currentUser.role === 'ADMIN' ? `
+            <div style="margin-top:20px;text-align:right;">
+              <button class="btn btn-sm btn-ghost" onclick="simulateCallback(${p.id})">🔄 Simulate Callback</button>
+            </div>` : ''}
+        `;
+      } catch(e) {
+        document.getElementById('payment-modal-body').innerHTML =
+          '<div style="text-align:center;color:var(--danger);padding:40px;">Lỗi tải dữ liệu</div>';
+      }
+    }
+
+    async function simulateCallback(paymentId) {
+      showToast('⏳ Đang giả lập callback...', 'warning');
+      try {
+        const res = await authFetch(`/api/payments/${paymentId}/simulate-callback`, { method: 'POST' });
+        if (!res) return;
+        const json = await res.json();
+        if (res.ok) {
+          showToast(`✅ Callback xử lý: ${json.data?.transaction?.status || json.message}`, 'success');
+          // Reload payment modal
+          const orderId = ordersData.find(o => {
+            // We don't have paymentId in ordersData directly, so just refresh
+            return true;
+          });
+          closeModal('modal-payment');
+          fetchOrders();
+        } else {
+          showToast(`❌ ${json.message}`, 'error');
+        }
+      } catch(e) {
+        showToast('❌ Lỗi mạng', 'error');
+      }
+    }
+
+    // ── History Modal ─────────────────────────────────────────────────────────
+    async function openHistoryModal(orderId) {
+      document.getElementById('history-modal-body').innerHTML =
+        '<div style="text-align:center;padding:40px;"><div class="spinner"></div></div>';
+      openModal('modal-history');
+
+      try {
+        const res = await authFetch(`/api/orders/${orderId}/status-logs`);
+        if (!res) return;
+
+        const json = await res.json();
+        const logs = json.data || [];
+        const body = document.getElementById('history-modal-body');
+
+        if (logs.length === 0) {
+          body.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);">
+            <div style="font-size:32px;margin-bottom:8px;">📋</div>
+            <div>Chưa có lịch sử thay đổi trạng thái</div></div>`;
+          return;
+        }
+
+        body.innerHTML = logs.map(log => `
+          <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9;">
+            <div style="width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:5px;flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <div style="font-size:13px;font-weight:600;">
+                  <span class="badge ${statusBadgeClass(log.previousStatus)}">${log.previousStatus || '—'}</span>
+                  <span style="margin:0 6px;color:var(--muted);">→</span>
+                  <span class="badge ${statusBadgeClass(log.newStatus)}">${log.newStatus}</span>
+                </div>
+                <div style="font-size:11px;color:var(--muted);">${new Date(log.createdAt).toLocaleString('vi-VN')}</div>
+              </div>
+              <div style="font-size:12px;color:var(--muted);">
+                Bởi: ${log.changedByUser ? log.changedByUser.fullName : (log.changedBy ? `User #${log.changedBy}` : 'Hệ thống')}
+                ${log.reason ? ` · ${log.reason}` : ''}
+              </div>
+            </div>
+          </div>`).join('');
+      } catch(e) {
+        document.getElementById('history-modal-body').innerHTML =
+          '<div style="text-align:center;color:var(--danger);padding:40px;">Lỗi tải dữ liệu</div>';
+      }
+    }
+
+    // ── Modal helpers ─────────────────────────────────────────────────────────
+    function openModal(id)  { document.getElementById(id).classList.add('open'); }
+    function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+    // Close modals on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.classList.remove('open');
+      });
+    });
+
+    // ── Toast ─────────────────────────────────────────────────────────────────
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // ── Init ──────────────────────────────────────────────────────────────────
+    init();
   </script>
 </body>
 </html>

@@ -1,8 +1,21 @@
-const shippingService = require("../services/shippingService");
-const { sequelize, User, DriverDetail, DriverLocation, Restaurant, OrderStatus, Food, Category, OrderItem } = require("../models");
-const orderRepository = require("../repositories/orderRepository");
-const orderFactory = require("../factories/orderFactory");
-const socketManager = require("../sockets");
+const shippingService = require('../services/shippingService');
+const {
+  sequelize,
+  User,
+  DriverDetail,
+  DriverLocation,
+  Restaurant,
+  OrderStatus,
+  Food,
+  Category,
+  OrderItem,
+  OrderStatusLog,
+} = require('../models');
+const orderRepository = require('../repositories/orderRepository');
+const orderFactory = require('../factories/orderFactory');
+const socketManager = require('../sockets');
+const orderAccessService = require('../services/orderAccessService');
+const orderStatusService = require('../services/orderStatusService');
 
 const DEFAULT_SHIPPING_BASE_FEE = 20000;
 const DEFAULT_ORDER_STATUS_CODE = orderFactory.DEFAULT_ORDER_STATUS_CODE;
@@ -28,12 +41,14 @@ const normalizeOrder = (item) => ({
   id: item.id,
   orderCode: item.orderCode,
   idempotencyKey: item.idempotencyKey,
-  customer: item.customerUser ? item.customerUser.fullName || `User ${item.customerId}` : `User ${item.customerId}`,
+  customer: item.customerUser
+    ? item.customerUser.fullName || `User ${item.customerId}`
+    : `User ${item.customerId}`,
   customerId: item.customerId,
   restaurantId: item.restaurantId,
   driverId: item.driverId,
   voucherId: item.voucherId,
-  receiverAddress: item.receiverAddress || "",
+  receiverAddress: item.receiverAddress || '',
   receiverLat: item.receiverLat,
   receiverLng: item.receiverLng,
   distanceKm: Number(item.distanceKm || 0),
@@ -75,7 +90,7 @@ const normalizeRequestedOrderItems = (items) => {
   }
 
   if (!Array.isArray(items) || items.length === 0) {
-    return { error: "items must be a non-empty array" };
+    return { error: 'items must be a non-empty array' };
   }
 
   const itemMap = new Map();
@@ -84,11 +99,11 @@ const normalizeRequestedOrderItems = (items) => {
     const quantity = Number(item.quantity);
 
     if (!Number.isInteger(foodId) || foodId <= 0) {
-      return { error: "items.foodId must be a positive integer" };
+      return { error: 'items.foodId must be a positive integer' };
     }
 
     if (!Number.isInteger(quantity) || quantity <= 0) {
-      return { error: "items.quantity must be a positive integer" };
+      return { error: 'items.quantity must be a positive integer' };
     }
 
     itemMap.set(foodId, (itemMap.get(foodId) || 0) + quantity);
@@ -108,7 +123,7 @@ const normalizeRestaurantForTracking = (item) => {
   return {
     id: item.id,
     name: item.name,
-    address: item.address || "",
+    address: item.address || '',
     latitude: Number(item.latitude || 0),
     longitude: Number(item.longitude || 0),
     isOpen: Boolean(item.isOpen),
@@ -122,10 +137,10 @@ const normalizeDriverForTracking = (item) => {
 
   return {
     id: item.userId,
-    fullName: item.driverUser ? item.driverUser.fullName || "" : "",
-    phone: item.driverUser ? item.driverUser.phone || "" : "",
-    vehicleType: item.vehicleType || "",
-    licensePlate: item.licensePlate || "",
+    fullName: item.driverUser ? item.driverUser.fullName || '' : '',
+    phone: item.driverUser ? item.driverUser.phone || '' : '',
+    vehicleType: item.vehicleType || '',
+    licensePlate: item.licensePlate || '',
     isOnline: Boolean(item.isOnline),
   };
 };
@@ -175,7 +190,10 @@ const calculateRouteProgress = (location, routePoints = []) => {
   let nearestDistance = Number.POSITIVE_INFINITY;
 
   routePoints.forEach((point, index) => {
-    const distance = Math.hypot(point.latitude - location.latitude, point.longitude - location.longitude);
+    const distance = Math.hypot(
+      point.latitude - location.latitude,
+      point.longitude - location.longitude
+    );
     if (distance < nearestDistance) {
       nearestDistance = distance;
       nearestIndex = index;
@@ -192,7 +210,7 @@ exports.createOrder = async (req, res) => {
       restaurantId,
       driverId,
       voucherId,
-      receiverAddress = "",
+      receiverAddress = '',
       receiverLat,
       receiverLng,
       distanceKm = 2,
@@ -200,7 +218,7 @@ exports.createOrder = async (req, res) => {
       discountAmount = 0,
       taxAmount = 0,
       statusCode = DEFAULT_ORDER_STATUS_CODE,
-      shippingType = "STANDARD",
+      shippingType = 'STANDARD',
       orderCode,
       idempotencyKey,
       items,
@@ -212,27 +230,27 @@ exports.createOrder = async (req, res) => {
     }
 
     if (!Number.isFinite(Number(customerId)) || !Number.isFinite(Number(restaurantId))) {
-      return res.status(400).json({ message: "customerId and restaurantId are required" });
+      return res.status(400).json({ message: 'customerId and restaurantId are required' });
     }
 
     if (!Number.isFinite(Number(receiverLat)) || !Number.isFinite(Number(receiverLng))) {
-      return res.status(400).json({ message: "receiverLat and receiverLng are required" });
+      return res.status(400).json({ message: 'receiverLat and receiverLng are required' });
     }
 
     if (!Number.isFinite(Number(distanceKm))) {
-      return res.status(400).json({ message: "distanceKm must be a number" });
+      return res.status(400).json({ message: 'distanceKm must be a number' });
     }
 
     if (!Number.isFinite(Number(baseFee))) {
-      return res.status(400).json({ message: "baseFee must be a number" });
+      return res.status(400).json({ message: 'baseFee must be a number' });
     }
 
     if (!Number.isFinite(Number(discountAmount))) {
-      return res.status(400).json({ message: "discountAmount must be a number" });
+      return res.status(400).json({ message: 'discountAmount must be a number' });
     }
 
     if (!Number.isFinite(Number(taxAmount))) {
-      return res.status(400).json({ message: "taxAmount must be a number" });
+      return res.status(400).json({ message: 'taxAmount must be a number' });
     }
 
     const [user, restaurant] = await Promise.all([
@@ -241,11 +259,11 @@ exports.createOrder = async (req, res) => {
     ]);
 
     if (!user || !restaurant) {
-      return res.status(400).json({ message: "customer or restaurant not found" });
+      return res.status(400).json({ message: 'customer or restaurant not found' });
     }
 
     if (!restaurant.isOpen) {
-      return res.status(400).json({ message: "restaurant is closed" });
+      return res.status(400).json({ message: 'restaurant is closed' });
     }
 
     const normalizedDistance = Number(distanceKm);
@@ -255,17 +273,17 @@ exports.createOrder = async (req, res) => {
 
     const [statusInfo, duplicated] = await Promise.all([
       resolveStatusByCode(statusCode),
-      idempotencyKey
-        ? orderRepository.findByIdempotencyKey(idempotencyKey)
-        : Promise.resolve(null),
+      idempotencyKey ? orderRepository.findByIdempotencyKey(idempotencyKey) : Promise.resolve(null),
     ]);
 
     if (!statusInfo) {
-      return res.status(400).json({ message: "Invalid statusCode" });
+      return res.status(400).json({ message: 'Invalid statusCode' });
     }
 
     if (duplicated) {
-      return res.status(200).json({ message: "Duplicated idempotency key", data: normalizeOrder(duplicated) });
+      return res
+        .status(200)
+        .json({ message: 'Duplicated idempotency key', data: normalizeOrder(duplicated) });
     }
 
     let createdOrderId = null;
@@ -281,13 +299,16 @@ exports.createOrder = async (req, res) => {
 
         for (const requestedItem of requestedItems.items) {
           const food = await Food.findByPk(requestedItem.foodId, {
-            include: [{ model: Category, as: "category", attributes: ["id", "restaurantId"] }],
+            include: [{ model: Category, as: 'category', attributes: ['id', 'restaurantId'] }],
             transaction,
             lock: transaction.LOCK.UPDATE,
           });
 
           if (!food || !food.category || Number(food.category.restaurantId) !== restaurant.id) {
-            throw createHttpError(400, `Food #${requestedItem.foodId} is not in this restaurant menu`);
+            throw createHttpError(
+              400,
+              `Food #${requestedItem.foodId} is not in this restaurant menu`
+            );
           }
 
           if (!food.isAvailable) {
@@ -296,7 +317,10 @@ exports.createOrder = async (req, res) => {
 
           const availableQuantity = Number(food.currentQuantity || 0);
           if (availableQuantity < requestedItem.quantity) {
-            throw createHttpError(409, `${food.name} only has ${availableQuantity} item(s) left today`);
+            throw createHttpError(
+              409,
+              `${food.name} only has ${availableQuantity} item(s) left today`
+            );
           }
 
           const priceAtOrder = Number(food.price || 0);
@@ -313,8 +337,15 @@ exports.createOrder = async (req, res) => {
         }
       }
 
-      const shippingFee = shippingService.calculateShippingFee(normalizedDistance, normalizedSubtotal, shippingType);
-      const totalAmount = Math.max(0, normalizedSubtotal + shippingFee + normalizedTax - normalizedDiscount);
+      const shippingFee = shippingService.calculateShippingFee(
+        normalizedDistance,
+        normalizedSubtotal,
+        shippingType
+      );
+      const totalAmount = Math.max(
+        0,
+        normalizedSubtotal + shippingFee + normalizedTax - normalizedDiscount
+      );
 
       const orderPayload = orderFactory.buildCreatePayload({
         orderCode,
@@ -355,13 +386,13 @@ exports.createOrder = async (req, res) => {
 
     // Emit event realtime
     try {
-      socketManager.getIO().emit("new_order", orderData);
-    } catch(e) {
-      console.log("Socket not ready or err", e.message);
+      socketManager.getIO().emit('new_order', orderData);
+    } catch (e) {
+      console.log('Socket not ready or err', e.message);
     }
 
     return res.status(201).json({
-      message: "Created",
+      message: 'Created',
       data: orderData,
     });
   } catch (error) {
@@ -383,6 +414,15 @@ exports.getOrders = async (req, res) => {
     if (req.query.fromDate) filters.fromDate = new Date(req.query.fromDate);
     if (req.query.toDate) filters.toDate = new Date(req.query.toDate);
 
+    // Merchant scope: only show orders for restaurants they own
+    if (req.user && String(req.user.role).toUpperCase() === 'MERCHANT') {
+      const restaurantIds = await orderAccessService.getMerchantRestaurantIds(req.user.id);
+      if (restaurantIds.length === 0) {
+        return res.json({ data: [] });
+      }
+      filters.restaurantIds = restaurantIds;
+    }
+
     const items = await orderRepository.findAll(filters);
     return res.json({ data: items.map(normalizeOrder) });
   } catch (error) {
@@ -396,12 +436,16 @@ exports.getOrderById = async (req, res) => {
     const item = await orderRepository.findById(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (req.user) {
+      await orderAccessService.assertCanAccessOrder(req.user, item);
     }
 
     return res.json({ data: normalizeOrder(item) });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
@@ -411,7 +455,7 @@ exports.getOrderTracking = async (req, res) => {
     const item = await orderRepository.findById(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     const orderData = normalizeOrder(item);
@@ -421,13 +465,19 @@ exports.getOrderTracking = async (req, res) => {
       orderData.driverId
         ? DriverDetail.findOne({
             where: { userId: orderData.driverId },
-            include: [{ model: User, as: "driverUser", attributes: ["id", "fullName", "phone", "ratingAvg"] }],
+            include: [
+              {
+                model: User,
+                as: 'driverUser',
+                attributes: ['id', 'fullName', 'phone', 'ratingAvg'],
+              },
+            ],
           })
         : Promise.resolve(null),
       orderData.driverId
         ? DriverLocation.findOne({
             where: { driverId: orderData.driverId, orderId: orderData.id },
-            order: [["created_at", "DESC"]],
+            order: [['created_at', 'DESC']],
           })
         : Promise.resolve(null),
     ]);
@@ -475,7 +525,7 @@ exports.updateOrder = async (req, res) => {
     const item = await orderRepository.findEntityById(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     const {
@@ -490,20 +540,20 @@ exports.updateOrder = async (req, res) => {
       statusCode,
       discountAmount,
       taxAmount,
-      shippingType = "STANDARD",
+      shippingType = 'STANDARD',
       driverId,
       voucherId,
       expectedVersion,
     } = req.body;
 
     if (expectedVersion !== undefined && Number(expectedVersion) !== Number(item.version)) {
-      return res.status(409).json({ message: "Version conflict" });
+      return res.status(409).json({ message: 'Version conflict' });
     }
 
     if (customerId !== undefined) {
       const user = await User.findByPk(Number(customerId));
       if (!user) {
-        return res.status(400).json({ message: "customer not found" });
+        return res.status(400).json({ message: 'customer not found' });
       }
       item.customerId = Number(customerId);
     }
@@ -511,7 +561,7 @@ exports.updateOrder = async (req, res) => {
     if (restaurantId !== undefined) {
       const restaurant = await Restaurant.findByPk(Number(restaurantId));
       if (!restaurant) {
-        return res.status(400).json({ message: "restaurant not found" });
+        return res.status(400).json({ message: 'restaurant not found' });
       }
       item.restaurantId = Number(restaurantId);
     }
@@ -522,21 +572,21 @@ exports.updateOrder = async (req, res) => {
 
     if (receiverLat !== undefined) {
       if (!Number.isFinite(Number(receiverLat))) {
-        return res.status(400).json({ message: "receiverLat must be a number" });
+        return res.status(400).json({ message: 'receiverLat must be a number' });
       }
       item.receiverLat = Number(receiverLat);
     }
 
     if (receiverLng !== undefined) {
       if (!Number.isFinite(Number(receiverLng))) {
-        return res.status(400).json({ message: "receiverLng must be a number" });
+        return res.status(400).json({ message: 'receiverLng must be a number' });
       }
       item.receiverLng = Number(receiverLng);
     }
 
     if (distanceKm !== undefined) {
       if (!Number.isFinite(Number(distanceKm))) {
-        return res.status(400).json({ message: "distanceKm must be a number" });
+        return res.status(400).json({ message: 'distanceKm must be a number' });
       }
       item.distanceKm = Number(distanceKm);
     }
@@ -553,29 +603,37 @@ exports.updateOrder = async (req, res) => {
     if (incomingStatusCode !== undefined) {
       const resolvedStatus = await resolveStatusByCode(incomingStatusCode);
       if (!resolvedStatus) {
-        return res.status(400).json({ message: "Invalid statusCode" });
+        return res.status(400).json({ message: 'Invalid statusCode' });
       }
       item.statusId = resolvedStatus.id;
     }
 
     if (baseFee !== undefined && !Number.isFinite(Number(baseFee))) {
-      return res.status(400).json({ message: "baseFee must be a number" });
+      return res.status(400).json({ message: 'baseFee must be a number' });
     }
 
     if (discountAmount !== undefined && !Number.isFinite(Number(discountAmount))) {
-      return res.status(400).json({ message: "discountAmount must be a number" });
+      return res.status(400).json({ message: 'discountAmount must be a number' });
     }
 
     if (taxAmount !== undefined && !Number.isFinite(Number(taxAmount))) {
-      return res.status(400).json({ message: "taxAmount must be a number" });
+      return res.status(400).json({ message: 'taxAmount must be a number' });
     }
 
-    const nextBaseFee = baseFee !== undefined ? Number(baseFee) : getBaseFeeFromOrder(item) || DEFAULT_SHIPPING_BASE_FEE;
+    const nextBaseFee =
+      baseFee !== undefined
+        ? Number(baseFee)
+        : getBaseFeeFromOrder(item) || DEFAULT_SHIPPING_BASE_FEE;
     const normalizedDistance = Number(item.distanceKm || 0);
-    const nextDiscount = discountAmount !== undefined ? Number(discountAmount) : Number(item.discountAmount || 0);
+    const nextDiscount =
+      discountAmount !== undefined ? Number(discountAmount) : Number(item.discountAmount || 0);
     const nextTax = taxAmount !== undefined ? Number(taxAmount) : Number(item.taxAmount || 0);
 
-    item.shippingFee = shippingService.calculateShippingFee(normalizedDistance, nextBaseFee, shippingType);
+    item.shippingFee = shippingService.calculateShippingFee(
+      normalizedDistance,
+      nextBaseFee,
+      shippingType
+    );
     item.subtotalAmount = nextBaseFee;
     item.discountAmount = nextDiscount;
     item.taxAmount = nextTax;
@@ -586,13 +644,13 @@ exports.updateOrder = async (req, res) => {
     const orderData = normalizeOrder(latest || item);
 
     try {
-      socketManager.getIO().emit("order:updated", orderData);
+      socketManager.getIO().emit('order:updated', orderData);
       socketManager.getIO().emit(`order:${orderData.id}:updated`, orderData);
     } catch (error) {
-      console.log("Socket not ready or err", error.message);
+      console.log('Socket not ready or err', error.message);
     }
 
-    return res.json({ message: "Updated", data: orderData });
+    return res.json({ message: 'Updated', data: orderData });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -601,44 +659,83 @@ exports.updateOrder = async (req, res) => {
 exports.updateOrderStatus = async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { status, statusCode, expectedVersion } = req.body;
+    const { status, statusCode, expectedVersion, reason } = req.body;
 
-    const [item, resolvedStatus] = await Promise.all([
-      orderRepository.findEntityById(id),
-      resolveStatusByCode(statusCode !== undefined ? statusCode : status),
-    ]);
-
+    // Fetch current order entity (raw, no includes needed)
+    const item = await orderRepository.findEntityById(id);
     if (!item) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
+    // Scope check: MERCHANT can only update orders from their restaurants
+    if (req.user) {
+      await orderAccessService.assertCanAccessOrder(req.user, item);
+    }
+
+    // Resolve target status
+    const targetCode = statusCode !== undefined ? statusCode : status;
+    const resolvedStatus = await orderStatusService.resolveStatus(targetCode);
     if (!resolvedStatus) {
-      return res.status(400).json({ message: "Invalid statusCode" });
+      return res.status(400).json({ message: 'Invalid statusCode' });
     }
 
-    if (expectedVersion !== undefined && Number(expectedVersion) !== Number(item.version)) {
-      return res.status(409).json({ message: "Version conflict" });
-    }
+    // Get current status code for transition validation
+    const currentStatus = await OrderStatus.findByPk(item.statusId);
+    const currentCode = currentStatus ? currentStatus.code : null;
 
-    const latest = await orderRepository.update(item, {
-      statusId: resolvedStatus.id,
-      version: Number(item.version || 0) + 1,
+    // changeStatus handles: transition validation (400), atomic update + log, version conflict (409)
+    await orderStatusService.changeStatus({
+      orderId: id,
+      oldStatusCode: currentCode,
+      newStatusCode: resolvedStatus.code,
+      newStatusId: resolvedStatus.id,
+      expectedVersion: expectedVersion !== undefined ? Number(expectedVersion) : null,
+      changedBy: req.user ? req.user.id : null,
+      reason: reason || null,
     });
+
+    // Reload with full includes
+    const latest = await orderRepository.findById(id);
     const orderData = normalizeOrder(latest);
 
     try {
-      socketManager.getIO().emit("order:updated", orderData);
+      socketManager.getIO().emit('order:updated', orderData);
       socketManager.getIO().emit(`order:${orderData.id}:updated`, orderData);
-    } catch (error) {
-      console.log("Socket not ready or err", error.message);
+    } catch (socketErr) {
+      console.log('Socket not ready or err', socketErr.message);
     }
 
-    return res.json({
-      message: "Updated",
-      data: orderData,
-    });
+    return res.json({ message: 'Updated', data: orderData });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET /api/orders/:id/status-logs
+ * Returns audit log of status changes for an order.
+ */
+exports.getOrderStatusLogs = async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const item = await orderRepository.findEntityById(id);
+    if (!item) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (req.user) {
+      await orderAccessService.assertCanAccessOrder(req.user, item);
+    }
+
+    const logs = await OrderStatusLog.findAll({
+      where: { orderId: id },
+      include: [{ model: User, as: 'changedByUser', attributes: ['id', 'fullName'] }],
+      order: [['created_at', 'DESC']],
+    });
+
+    return res.json({ data: logs });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
@@ -648,11 +745,11 @@ exports.deleteOrder = async (req, res) => {
     const item = await orderRepository.findEntityById(id);
 
     if (!item) {
-      return res.status(404).json({ message: "Order not found" });
+      return res.status(404).json({ message: 'Order not found' });
     }
 
     const deleted = await orderRepository.delete(item);
-    return res.json({ message: "Deleted", data: deleted });
+    return res.json({ message: 'Deleted', data: deleted });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -662,12 +759,12 @@ exports.getOrdersPage = (req, res) => {
   return orderRepository
     .findAll()
     .then((items) => {
-      res.render("orders", {
+      res.render('orders', {
         orders: items.map(normalizeOrder),
       });
     })
     .catch(() => {
-      res.render("orders", {
+      res.render('orders', {
         orders: [],
       });
     });

@@ -1,11 +1,11 @@
-const { verifyAuthToken } = require("../utils/authToken");
+const { verifyAuthToken } = require('../utils/authToken');
 
 module.exports = (req, res, next) => {
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
 
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized" });
+    return res.status(401).json({ message: 'Unauthorized' });
   }
 
   try {
@@ -21,6 +21,6 @@ module.exports = (req, res, next) => {
 
     return next();
   } catch (error) {
-    return res.status(401).json({ message: error.message || "Unauthorized" });
+    return res.status(401).json({ message: error.message || 'Unauthorized' });
   }
 };

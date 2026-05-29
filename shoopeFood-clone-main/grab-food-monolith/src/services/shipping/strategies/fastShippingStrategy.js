@@ -3,7 +3,7 @@ const FAST_FLAT_FEE = 8000;
 
 class FastShippingStrategy {
   constructor() {
-    this.code = "FAST";
+    this.code = 'FAST';
   }
 
   calculate(distanceKm) {

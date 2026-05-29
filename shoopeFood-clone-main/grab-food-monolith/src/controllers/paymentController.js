@@ -1,100 +1,111 @@
-const { Payment, PaymentTransaction, Order } = require("../models");
+const paymentService = require('../services/paymentService');
+const orderAccessService = require('../services/orderAccessService');
+const orderRepository = require('../repositories/orderRepository');
 
-// Tiện ích sleep giả lập timeout cổng thanh toán
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
+/**
+ * POST /api/payments/create
+ * Creates a payment with proper idempotency:
+ *   - Same idempotencyKey → 200 "Idempotent replay"
+ *   - orderId has payment with different key → 409
+ *   - Otherwise → 201 "Created"
+ */
 exports.createPayment = async (req, res) => {
   try {
     const { orderId, idempotencyKey, paymentMethod } = req.body;
 
     if (!orderId || !idempotencyKey || !paymentMethod) {
-      return res.status(400).json({ message: "Missing required fields" });
+      return res
+        .status(400)
+        .json({ message: 'Missing required fields: orderId, idempotencyKey, paymentMethod' });
     }
 
-    const order = await Order.findByPk(orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    const result = await paymentService.createPaymentWithIdempotency({
+      orderId,
+      idempotencyKey,
+      paymentMethod,
+    });
 
-    // Kiểm tra xem Payment cho order này đã tồn tại chưa
-    let payment = await Payment.findOne({ where: { orderId } });
-    if (!payment) {
-      payment = await Payment.create({
-        orderId,
-        idempotencyKey,
-        paymentMethod,
-        amount: order.totalAmount,
-        status: "PENDING"
-      });
-    }
-
-    return res.status(201).json({ message: "Payment checkout created", data: payment });
+    return res.status(result.httpStatus).json({
+      message: result.message,
+      data: result.data,
+    });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
+/**
+ * POST /api/payments/callback
+ * Gateway/stub callback endpoint. Protected by x-stub-secret header.
+ * Does NOT use Bearer token auth (gateway does not log in as a user).
+ *
+ * Idempotency rules:
+ *   - Payment already finalized with same outcome → 200 "Already processed"
+ *   - Payment already finalized with different outcome → 409
+ *   - Otherwise → process, create transaction, update payment
+ */
 exports.processPaymentCallback = async (req, res) => {
   try {
     const { paymentId, gatewayRef } = req.body;
 
-    const payment = await Payment.findByPk(paymentId);
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
+    if (!paymentId) {
+      return res.status(400).json({ message: 'paymentId is required' });
     }
 
-    // Lấy số transaction tiếp theo
-    const attemptCount = await PaymentTransaction.count({ where: { paymentId } });
-    
-    // Giả lập processing delay 1-2s
-    await sleep(Math.floor(Math.random() * 1000) + 1000);
-
-    // Xác suất 5% thất bại mock theo yêu cầu
-    const isMockFailure = Math.random() < 0.05;
-    const nextStatus = isMockFailure ? (Math.random() < 0.5 ? "FAILED" : "TIMEOUT") : "SUCCESS";
-    
-    // Ghi transaction
-    const transaction = await PaymentTransaction.create({
-      paymentId,
-      attemptNumber: attemptCount + 1,
-      status: nextStatus === "TIMEOUT" ? "FAILED" : nextStatus,
-      transactionRef: gatewayRef || `MOCK-${Date.now()}`,
-      gatewayResponse: isMockFailure ? { code: "99", message: "Giao dịch lỗi/Timeout" } : { code: "00", message: "Thành công" },
+    const result = await paymentService.processCallback({ paymentId, gatewayRef });
+    return res.status(result.httpStatus).json({
+      message: result.message,
+      data: result.data,
     });
-
-    if (nextStatus === "SUCCESS") {
-      await payment.update({ status: "SUCCESS" });
-    } else {
-      await payment.update({ status: "FAILED" });
-    }
-
-    return res.json({ 
-      message: "Callback processed", 
-      data: {
-        payment,
-        transaction
-      }
-    });
-
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 };
 
+/**
+ * POST /api/payments/:paymentId/simulate-callback
+ * Admin-only endpoint to simulate a payment callback for demo purposes.
+ * Uses auth + requireRole(['ADMIN']) – separate from gateway callback.
+ */
+exports.simulateCallback = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const result = await paymentService.simulateCallback({ paymentId });
+    return res.status(result.httpStatus).json({
+      message: result.message,
+      data: result.data,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({ message: error.message });
+  }
+};
+
+/**
+ * GET /api/payments/:orderId
+ * Returns payment + all transactions for an order.
+ * Requires ADMIN or MERCHANT with scope check.
+ */
 exports.getPaymentStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const payment = await Payment.findOne({
-      where: { orderId },
-      include: [{ model: PaymentTransaction, as: "transactions" }]
-    });
+
+    // Scope check: MERCHANT can only see payments for their restaurants
+    if (req.user) {
+      const order = await orderRepository.findEntityById(Number(orderId));
+      if (order) {
+        await orderAccessService.assertCanAccessOrder(req.user, order);
+      }
+    }
+
+    const payment = await paymentService.getPaymentStatusWithTransactions(orderId);
 
     if (!payment) {
-      return res.status(404).json({ message: "Payment not found for this order" });
+      return res.status(404).json({ message: 'Payment not found for this order' });
     }
 
     return res.json({ data: payment });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(error.statusCode || 500).json({ message: error.message });
   }
 };

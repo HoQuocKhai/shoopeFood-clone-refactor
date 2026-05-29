@@ -1,4 +1,4 @@
-const { Food } = require("../models");
+const { Food } = require('../models');
 
 const getDelayToNextLocalMidnight = () => {
   const now = new Date();
@@ -21,7 +21,7 @@ const scheduleDailyFoodQuantityReset = () => {
       const resetDate = await resetExpiredFoodQuantities();
       console.log(`Food quantities reset for ${resetDate}`);
     } catch (error) {
-      console.error("Cannot reset food quantities:", error.message);
+      console.error('Cannot reset food quantities:', error.message);
     } finally {
       timer = setTimeout(runAndScheduleNext, getDelayToNextLocalMidnight());
     }

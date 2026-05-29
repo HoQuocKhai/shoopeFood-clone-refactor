@@ -1,9 +1,9 @@
-const DEFAULT_ORDER_STATUS_CODE = "PENDING";
+const DEFAULT_ORDER_STATUS_CODE = 'PENDING';
 
 class OrderFactory {
   buildOrderCode() {
     const now = new Date();
-    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+    const datePart = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
     return `ORD-${datePart}-${Date.now()}`;
   }
 
@@ -19,7 +19,7 @@ class OrderFactory {
       restaurantId: Number(input.restaurantId),
       driverId: Number.isFinite(Number(input.driverId)) ? Number(input.driverId) : null,
       voucherId: Number.isFinite(Number(input.voucherId)) ? Number(input.voucherId) : null,
-      receiverAddress: String(input.receiverAddress || "").trim(),
+      receiverAddress: String(input.receiverAddress || '').trim(),
       receiverLat: Number(input.receiverLat),
       receiverLng: Number(input.receiverLng),
       distanceKm: Number(input.distanceKm),
@@ -34,7 +34,11 @@ class OrderFactory {
   }
 
   resolveStatusCode(inputStatusCode) {
-    return String(inputStatusCode || "").trim().toUpperCase() || DEFAULT_ORDER_STATUS_CODE;
+    return (
+      String(inputStatusCode || '')
+        .trim()
+        .toUpperCase() || DEFAULT_ORDER_STATUS_CODE
+    );
   }
 }
 
