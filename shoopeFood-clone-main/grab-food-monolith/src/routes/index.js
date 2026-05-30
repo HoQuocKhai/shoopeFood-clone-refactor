@@ -1,13 +1,11 @@
 const express = require('express');
-const authRoutes = require('./authRoutes');
-const userRoutes = require('./userRoutes');
-const driverRoutes = require('./driverRoutes');
-const orderRoutes = require('./orderRoutes');
-const restaurantRoutes = require('./restaurantRoutes');
-const categoryRoutes = require('./categoryRoutes');
-const foodRoutes = require('./foodRoutes');
-const paymentRoutes = require('./paymentRoutes');
-const orderStatusController = require('../controllers/orderStatusController');
+const { authRoutes } = require('../modules/auth');
+const { userRoutes } = require('../modules/users');
+const { driverRoutes } = require('../modules/drivers');
+const { orderRoutes, orderStatusRoutes } = require('../modules/orders');
+const { restaurantRoutes } = require('../modules/restaurants');
+const { categoryRoutes, foodRoutes } = require('../modules/menu');
+const { paymentRoutes } = require('../modules/payments');
 
 const router = express.Router();
 
@@ -40,8 +38,7 @@ router.get('/orders-dashboard', (req, res) => {
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 // Order statuses (no auth needed – not sensitive data)
-router.get('/api/order-statuses', orderStatusController.getAll);
-router.get('/api/order-statuses/transitions', orderStatusController.getTransitions);
+router.use('/api/order-statuses', orderStatusRoutes);
 
 // ─── Auth & Domain APIs ───────────────────────────────────────────────────────
 router.use('/api/auth', authRoutes);

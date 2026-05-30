@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const routes = require('./routes');
+const { errorHandler, notFoundHandler } = require('./common');
 
 const app = express();
 
@@ -15,5 +16,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 module.exports = app;

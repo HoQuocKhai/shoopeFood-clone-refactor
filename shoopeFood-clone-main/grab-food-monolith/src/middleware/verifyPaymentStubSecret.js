@@ -1,4 +1,4 @@
-const { isValidStubSecret } = require('../services/paymentService');
+const { isValidStubSecret } = require('../modules/payments/services/payment.service');
 
 /**
  * Middleware to verify payment stub secret from x-stub-secret header.

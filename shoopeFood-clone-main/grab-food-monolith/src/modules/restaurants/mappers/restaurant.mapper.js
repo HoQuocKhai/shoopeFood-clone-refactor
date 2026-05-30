@@ -1,0 +1,33 @@
+exports.normalizeRestaurant = (item) => ({
+  id: item.id,
+  ownerId: item.ownerId,
+  name: item.name,
+  address: item.address || '',
+  latitude: Number(item.latitude || 0),
+  longitude: Number(item.longitude || 0),
+  openingTime: item.openingTime || '07:00:00',
+  closingTime: item.closingTime || '22:00:00',
+  isOpen: Boolean(item.isOpen),
+  isOpenToday: Boolean(item.isOpenToday),
+  temporaryClosedReason: item.temporaryClosedReason || null,
+  temporaryClosedUntil: item.temporaryClosedUntil || null,
+  imageUrl: item.imageUrl || null,
+  ratingAvg: Number(item.ratingAvg || 5.0),
+  approvalStatus: item.approvalStatus || 'PENDING',
+  approvedBy: item.approvedBy || null,
+  approvedAt: item.approvedAt || null,
+  rejectReason: item.rejectReason || null,
+  deletedAt: item.deletedAt || null,
+});
+
+exports.normalizeChangeRequest = (item) => ({
+  id: item.id,
+  restaurantId: item.restaurantId,
+  requestedBy: item.requestedBy,
+  payload: item.payload,
+  status: item.status,
+  reviewedBy: item.reviewedBy || null,
+  reviewedAt: item.reviewedAt || null,
+  rejectReason: item.rejectReason || null,
+  createdAt: item.createdAt || null,
+});

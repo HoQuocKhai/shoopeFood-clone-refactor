@@ -1,14 +1,14 @@
-import { Route, Routes } from 'react-router-dom'
-import RequireAuth from '../components/common/RequireAuth'
-import MainLayout from '../layouts/MainLayout'
-import AdminPage from '../pages/AdminPage'
-import HomePage from '../pages/HomePage'
-import DriverPage from '../pages/DriverPage'
-import LoginPage from '../pages/LoginPage'
-import RestaurantListPage from '../pages/RestaurantListPage'
-import RestaurantDetailPage from '../pages/RestaurantDetailPage'
-import RestaurantFormPage from '../pages/RestaurantFormPage'
-import TrackingPage from '../pages/TrackingPage'
+import { Route, Routes } from 'react-router-dom';
+import RequireAuth from '../components/common/RequireAuth';
+import MainLayout from '../layouts/MainLayout';
+import AdminPage from '../features/admin/pages/AdminPage';
+import HomePage from '../features/home/pages/HomePage';
+import DriverPage from '../features/driver/pages/DriverPage';
+import LoginPage from '../features/auth/pages/LoginPage';
+import RestaurantListPage from '../features/restaurants/pages/RestaurantListPage';
+import RestaurantDetailPage from '../features/restaurants/pages/RestaurantDetailPage';
+import RestaurantFormPage from '../features/restaurants/pages/RestaurantFormPage';
+import TrackingPage from '../features/orders/pages/TrackingPage';
 
 export default function AppRouter() {
   return (
@@ -67,5 +67,5 @@ export default function AppRouter() {
         />
       </Routes>
     </MainLayout>
-  )
+  );
 }

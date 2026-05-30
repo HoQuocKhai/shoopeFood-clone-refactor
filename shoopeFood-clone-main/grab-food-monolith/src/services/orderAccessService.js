@@ -38,6 +38,10 @@ const canAccessOrder = async (user, order) => {
     return Number(order.driverId) === Number(user.id);
   }
 
+  if (role === 'CUSTOMER') {
+    return Number(order.customerId) === Number(user.id);
+  }
+
   return false;
 };
 

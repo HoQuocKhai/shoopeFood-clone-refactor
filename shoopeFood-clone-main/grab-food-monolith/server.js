@@ -1,7 +1,7 @@
 require('dotenv').config();
 const http = require('http');
 const app = require('./src/app');
-const socketManager = require('./src/sockets');
+const { socketManager } = require('./src/modules/tracking');
 const { initializeDatabase } = require('./src/services/databaseInitializer');
 const { scheduleDailyFoodQuantityReset } = require('./src/services/foodQuantityResetService');
 
