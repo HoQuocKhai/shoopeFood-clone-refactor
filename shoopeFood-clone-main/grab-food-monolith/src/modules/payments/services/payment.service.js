@@ -1,4 +1,4 @@
-const { Payment, PaymentTransaction, Order } = require('../../../models');
+const { Payment, PaymentTransaction, Order, OrderStatus } = require('../../../models');
 const { NotFoundError, ConflictError, BadRequestError } = require('../../../common/errors');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -20,13 +20,23 @@ const createPaymentWithIdempotency = async ({ orderId, idempotencyKey, paymentMe
     );
   }
 
-  const order = await Order.findByPk(Number(orderId));
+  const order = await Order.findByPk(Number(orderId), {
+    include: [{ model: OrderStatus, as: 'statusInfo', attributes: ['id', 'code'] }],
+  });
   if (!order) {
     throw new NotFoundError('Order not found');
   }
 
   if (!order.totalAmount || Number(order.totalAmount) <= 0) {
     throw new BadRequestError('Order has invalid total amount for payment');
+  }
+
+  // Only allow payment creation for PENDING orders
+  const statusCode = order.statusInfo ? order.statusInfo.code : null;
+  if (statusCode !== 'PENDING') {
+    throw new BadRequestError(
+      `Cannot create payment for order with status "${statusCode}". Only PENDING orders are allowed.`
+    );
   }
 
   const payment = await Payment.create({

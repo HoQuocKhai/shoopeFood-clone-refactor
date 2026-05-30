@@ -1,24 +1,19 @@
 const {
   sequelize,
-  User,
   Restaurant,
   Food,
   Category,
   OrderItem,
   DriverDetail,
   DriverLocation,
+  User,
 } = require('../../../models');
 const orderRepository = require('../repositories/order.repository');
 const orderFactory = require('../../../factories/orderFactory');
 const shippingService = require('../../../services/shippingService');
-const {
-  AppError,
-  BadRequestError,
-  ConflictError,
-  NotFoundError,
-} = require('../../../common/errors');
-
-const DEFAULT_SHIPPING_BASE_FEE = 20000;
+const orderPricingService = require('./order-pricing.service');
+const orderValidationService = require('./order-validation.service');
+const { BadRequestError, ConflictError, NotFoundError } = require('../../../common/errors');
 
 class OrderService {
   async resolveStatusByCode(statusCode) {
@@ -38,7 +33,6 @@ class OrderService {
       receiverLat,
       receiverLng,
       distanceKm = 2,
-      baseFee = DEFAULT_SHIPPING_BASE_FEE,
       discountAmount = 0,
       taxAmount = 0,
       statusCode = orderFactory.DEFAULT_ORDER_STATUS_CODE,
@@ -48,14 +42,16 @@ class OrderService {
       items,
     } = payload;
 
-    const [user, restaurant] = await Promise.all([
-      User.findByPk(Number(customerId)),
-      Restaurant.findByPk(Number(restaurantId)),
-    ]);
+    // ── Validate items exist ──────────────────────────────────────────────────
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new BadRequestError('Order must contain at least one food item');
+    }
 
-    if (!user) throw new BadRequestError('customer not found');
-    if (!restaurant) throw new BadRequestError('restaurant not found');
-    if (!restaurant.isOpen) throw new BadRequestError('restaurant is closed');
+    // ── Validate customer (must have CUSTOMER role) & restaurant ──────────────
+    const [customer, restaurant] = await Promise.all([
+      orderValidationService.assertCustomerExists(customerId),
+      orderValidationService.assertRestaurantOpen(restaurantId),
+    ]);
 
     const [statusInfo, duplicated] = await Promise.all([
       this.resolveStatusByCode(statusCode),
@@ -75,64 +71,61 @@ class OrderService {
     await sequelize.transaction(async (transaction) => {
       await Food.resetExpiredDailyQuantities({ transaction });
 
-      let normalizedSubtotal = Number(baseFee);
       const preparedOrderItems = [];
 
-      if (items && items.length > 0) {
-        normalizedSubtotal = 0;
+      for (const requestedItem of items) {
+        const food = await Food.findByPk(requestedItem.foodId, {
+          include: [{ model: Category, as: 'category', attributes: ['id', 'restaurantId'] }],
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
 
-        for (const requestedItem of items) {
-          const food = await Food.findByPk(requestedItem.foodId, {
-            include: [{ model: Category, as: 'category', attributes: ['id', 'restaurantId'] }],
-            transaction,
-            lock: transaction.LOCK.UPDATE,
-          });
-
-          if (!food || !food.category || Number(food.category.restaurantId) !== restaurant.id) {
-            throw new BadRequestError(
-              `Food #${requestedItem.foodId} is not in this restaurant menu`
-            );
-          }
-
-          if (!food.isAvailable) {
-            throw new BadRequestError(`${food.name} is not available`);
-          }
-
-          const availableQuantity = Number(food.currentQuantity || 0);
-          if (availableQuantity < requestedItem.quantity) {
-            throw new ConflictError(
-              `${food.name} only has ${availableQuantity} item(s) left today`
-            );
-          }
-
-          const priceAtOrder = Number(food.price || 0);
-          normalizedSubtotal += priceAtOrder * requestedItem.quantity;
-          food.currentQuantity = availableQuantity - requestedItem.quantity;
-
-          await food.save({ transaction });
-
-          preparedOrderItems.push({
-            foodId: food.id,
-            quantity: requestedItem.quantity,
-            priceAtOrder,
-          });
+        if (!food || !food.category || Number(food.category.restaurantId) !== restaurant.id) {
+          throw new BadRequestError(`Food #${requestedItem.foodId} is not in this restaurant menu`);
         }
+
+        if (!food.isAvailable) {
+          throw new BadRequestError(`${food.name} is not available`);
+        }
+
+        const availableQuantity = Number(food.currentQuantity || 0);
+        if (availableQuantity < requestedItem.quantity) {
+          throw new ConflictError(`${food.name} only has ${availableQuantity} item(s) left today`);
+        }
+
+        const priceAtOrder = Number(food.price || 0);
+        food.currentQuantity = availableQuantity - requestedItem.quantity;
+
+        await food.save({ transaction });
+
+        preparedOrderItems.push({
+          foodId: food.id,
+          quantity: requestedItem.quantity,
+          priceAtOrder,
+        });
       }
 
+      // ── Calculate pricing ────────────────────────────────────────────────
       const shippingFee = shippingService.calculateShippingFee(
         Number(distanceKm),
-        normalizedSubtotal,
+        0, // baseFee no longer used for subtotal; shipping calculated from distance
         shippingType
       );
-      const totalAmount = Math.max(
-        0,
-        normalizedSubtotal + shippingFee + Number(taxAmount) - Number(discountAmount)
-      );
+
+      const pricing = orderPricingService.calculate({
+        items: preparedOrderItems.map((item) => ({
+          unitPrice: item.priceAtOrder,
+          quantity: item.quantity,
+        })),
+        shippingFee,
+        taxAmount: Number(taxAmount),
+        discountAmount: Number(discountAmount),
+      });
 
       const orderPayload = orderFactory.buildCreatePayload({
         orderCode,
         idempotencyKey,
-        customerId: user.id,
+        customerId: customer.id,
         restaurantId: restaurant.id,
         driverId,
         voucherId,
@@ -140,25 +133,23 @@ class OrderService {
         receiverLat,
         receiverLng,
         distanceKm: Number(distanceKm),
-        subtotalAmount: normalizedSubtotal,
-        taxAmount: Number(taxAmount),
-        totalAmount,
-        shippingFee,
-        discountAmount: Number(discountAmount),
+        subtotalAmount: pricing.subtotalAmount,
+        taxAmount: pricing.taxAmount,
+        totalAmount: pricing.totalAmount,
+        shippingFee: pricing.shippingFee,
+        discountAmount: pricing.discountAmount,
         statusId: statusInfo.id,
       });
 
       const newOrder = await orderRepository.create(orderPayload, { transaction });
 
-      if (preparedOrderItems.length > 0) {
-        await OrderItem.bulkCreate(
-          preparedOrderItems.map((item) => ({
-            ...item,
-            orderId: newOrder.id,
-          })),
-          { transaction }
-        );
-      }
+      await OrderItem.bulkCreate(
+        preparedOrderItems.map((item) => ({
+          ...item,
+          orderId: newOrder.id,
+        })),
+        { transaction }
+      );
 
       createdOrderId = newOrder.id;
     });
@@ -196,43 +187,6 @@ class OrderService {
     ]);
 
     return { item, restaurant, driver, latestLocation };
-  }
-
-  buildRoutePoints(from, to, steps = 40) {
-    const points = [];
-    const fromLat = Number(from.latitude || 0);
-    const fromLng = Number(from.longitude || 0);
-    const toLat = Number(to.latitude || 0);
-    const toLng = Number(to.longitude || 0);
-
-    for (let index = 0; index <= steps; index += 1) {
-      const ratio = index / steps;
-      const curve = Math.sin(ratio * Math.PI) * 0.0025;
-      points.push({
-        latitude: fromLat + (toLat - fromLat) * ratio + curve,
-        longitude: fromLng + (toLng - fromLng) * ratio - curve * 0.65,
-      });
-    }
-    return points;
-  }
-
-  calculateRouteProgress(location, routePoints = []) {
-    if (!location || routePoints.length === 0) return 0;
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-
-    routePoints.forEach((point, index) => {
-      const distance = Math.hypot(
-        point.latitude - location.latitude,
-        point.longitude - location.longitude
-      );
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = index;
-      }
-    });
-
-    return Math.round((nearestIndex / Math.max(routePoints.length - 1, 1)) * 100);
   }
 }
 

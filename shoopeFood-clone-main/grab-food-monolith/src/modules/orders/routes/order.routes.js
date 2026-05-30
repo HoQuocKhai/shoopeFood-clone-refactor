@@ -20,8 +20,14 @@ router.post(
   validateRequest(createOrderSchema),
   orderController.createOrder
 );
-// Backward-compat secure route (any authenticated user)
-router.post('/secure', auth, validateRequest(createOrderSchema), orderController.createOrder);
+// Backward-compat secure route (requires CUSTOMER role)
+router.post(
+  '/secure',
+  auth,
+  requireRole(['CUSTOMER']),
+  validateRequest(createOrderSchema),
+  orderController.createOrder
+);
 
 // ─── Shared Authenticated ────────────────────────────────────────────────────────
 // List orders (scope applied inside controller via orderAccessService)

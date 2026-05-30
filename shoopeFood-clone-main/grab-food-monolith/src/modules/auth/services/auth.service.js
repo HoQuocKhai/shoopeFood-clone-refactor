@@ -1,6 +1,7 @@
 const { User, Role } = require('../../../models');
 const { UnauthorizedError, ForbiddenError, NotFoundError } = require('../../../common/errors');
 const { createAuthToken } = require('../../../utils/authToken');
+const { comparePassword } = require('../../../utils/password');
 
 class AuthService {
   async login({ phone, password, role }) {
@@ -11,7 +12,13 @@ class AuthService {
       ],
     });
 
-    if (!user || String(user.password) !== password) {
+    if (!user) {
+      throw new UnauthorizedError('Invalid phone or password');
+    }
+
+    // Compare password using hashing (supports legacy plaintext fallback)
+    const isMatch = await comparePassword(password, user.password);
+    if (!isMatch) {
       throw new UnauthorizedError('Invalid phone or password');
     }
 
